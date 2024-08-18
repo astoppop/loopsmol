@@ -1,4 +1,11 @@
 import {
+  CombatResource as BaseCombatResource,
+  DelayedMacro,
+  Outfit,
+  OutfitSpec,
+  step,
+} from "grimoire-kolmafia";
+import {
   buy,
   cliExecute,
   Effect,
@@ -19,16 +26,18 @@ import {
   myMaxmp,
   myMeat,
   myMp,
+  mySpleenUse,
   myTurncount,
   numericModifier,
   retrieveItem,
   Skill,
+  spleenLimit,
   toInt,
   totalTurnsPlayed,
   use,
   useFamiliar,
   useSkill,
-  visitUrl,
+  visitUrl
 } from "kolmafia";
 import {
   $class,
@@ -53,19 +62,12 @@ import {
   set,
   SourceTerminal,
 } from "libram";
-import {
-  CombatResource as BaseCombatResource,
-  DelayedMacro,
-  Outfit,
-  OutfitSpec,
-  step,
-} from "grimoire-kolmafia";
-import { atLevel } from "../lib";
 import { args } from "../args";
-import { killMacro } from "./combat";
-import { BanishState } from "./state";
-import { customRestoreMp } from "./moods";
+import { atLevel } from "../lib";
 import { oresNeeded } from "../tasks/level8";
+import { killMacro } from "./combat";
+import { customRestoreMp } from "./moods";
+import { BanishState } from "./state";
 import { Task } from "./task";
 
 export interface Resource {
@@ -802,8 +804,10 @@ export const noncombatForceNCSources: ForceNCSource[] = [
   {
     available: () => CinchoDeMayo.currentCinch() >= 60,
     do: () => useSkill($skill`Cincho: Fiesta Exit`)
-  },
-];
+  }, {
+    available: () => spleenLimit() - mySpleenUse() >= 3,
+    do: () => cliExecute("pillkeeper noncombat")
+  }];
 
 export function tryForceNC(): boolean {
   if (get("noncombatForcerActive")) return true;
