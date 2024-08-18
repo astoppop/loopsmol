@@ -805,7 +805,7 @@ export const noncombatForceNCSources: ForceNCSource[] = [
     available: () => CinchoDeMayo.currentCinch() >= 60,
     do: () => useSkill($skill`Cincho: Fiesta Exit`)
   }, {
-    available: () => spleenLimit() - mySpleenUse() >= 3,
+    available: () => args.minor.pillkeeper && spleenLimit() - mySpleenUse() >= 3,
     do: () => cliExecute("pillkeeper noncombat")
   }];
 

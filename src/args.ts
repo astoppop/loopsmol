@@ -108,6 +108,10 @@ export const args = Args.create(
       tune: Args.string({
         help: "Use your hewn moon-rune spoon to retune to this sign after dieting.",
       }),
+      pillkeeper: Args.flag({
+        help: "Use spleen to force noncombats",
+        default: true
+      })
     }),
     debug: Args.group("Debug Options", {
       actions: Args.number({
