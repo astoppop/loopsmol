@@ -1,3 +1,4 @@
+import { Modes, Outfit, OutfitSpec, step } from "grimoire-kolmafia";
 import {
   cliExecute,
   closetAmount,
@@ -39,11 +40,10 @@ import {
   have,
   maxBy,
 } from "libram";
-import { Resource } from "./resources";
-import { Keys, keyStrategy } from "../tasks/keys";
-import { Modes, Outfit, OutfitSpec, step } from "grimoire-kolmafia";
-import { atLevel, garboAverageValue, garboValue, haveLoathingLegion } from "../lib";
 import { args } from "../args";
+import { atLevel, garboAverageValue, garboValue, haveLoathingLegion } from "../lib";
+import { Keys, keyStrategy } from "../tasks/keys";
+import { Resource } from "./resources";
 
 export function canEquipResource(outfit: Outfit, resource: Resource): boolean {
   if (!resource.equip) return true;
@@ -303,6 +303,10 @@ export function equipDefaults(outfit: Outfit, noFightingFamiliars: boolean): voi
   if (outfit.skipDefaults) return;
 
   if (modifier.includes("-combat")) outfit.equip($familiar`Disgeist`); // low priority
+  if (modifier.includes("item")) {
+    outfit.equip($familiar`Cat Burglar`);
+    outfit.equip($familiar`Baby Gravy Fairy`);
+  }
 
   if (!noFightingFamiliars) {
     if (args.minor.profitFamiliar) {
