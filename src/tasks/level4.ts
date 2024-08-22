@@ -1,3 +1,4 @@
+import { Outfit, step } from "grimoire-kolmafia";
 import { itemAmount, myDaycount, numericModifier, use, visitUrl } from "kolmafia";
 import {
   $effect,
@@ -12,13 +13,12 @@ import {
   have,
   Macro,
 } from "libram";
-import { Quest } from "../engine/task";
-import { Outfit, step } from "grimoire-kolmafia";
-import { Priorities } from "../engine/priority";
 import { CombatStrategy } from "../engine/combat";
+import { stenchPlanner } from "../engine/outfit";
+import { Priorities } from "../engine/priority";
+import { Quest } from "../engine/task";
 import { atLevel } from "../lib";
 import { councilSafe } from "./level12";
-import { stenchPlanner } from "../engine/outfit";
 
 export const BatQuest: Quest = {
   name: "Bat",
@@ -80,8 +80,8 @@ export const BatQuest: Quest = {
       completed: () => step("questL04Bat") + itemAmount($item`sonar-in-a-biscuit`) >= 2,
       priority: () =>
         step("questL11Shen") === 999 ||
-        have($item`The Stankara Stone`) ||
-        (myDaycount() === 1 && step("questL11Shen") > 1)
+          have($item`The Stankara Stone`) ||
+          (myDaycount() === 1 && step("questL11Shen") > 1)
           ? Priorities.None
           : Priorities.BadMood,
       prepare: () => {
@@ -93,7 +93,7 @@ export const BatQuest: Quest = {
       post: () => {
         if (have($item`sonar-in-a-biscuit`)) use($item`sonar-in-a-biscuit`);
       },
-      outfit: { modifier: "item, 10 stench res" },
+      outfit: { modifier: "item, stench res 1 min 1 max" },
       combat: new CombatStrategy().kill($monster`screambat`).killItem(),
       limit: { tries: 10 },
     },
@@ -118,7 +118,7 @@ export const BatQuest: Quest = {
       post: () => {
         if (have($item`sonar-in-a-biscuit`)) use($item`sonar-in-a-biscuit`);
       },
-      outfit: { modifier: "item, 10 stench res" },
+      outfit: { modifier: "item, stench res 1 min 1 max" },
       combat: new CombatStrategy().kill($monster`screambat`).killItem(),
       limit: { tries: 10 },
     },
