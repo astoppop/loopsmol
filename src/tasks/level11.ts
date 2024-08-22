@@ -1,3 +1,4 @@
+import { OutfitSpec, step } from "grimoire-kolmafia";
 import {
   availableAmount,
   buy,
@@ -28,14 +29,13 @@ import {
   Macro,
   uneffect,
 } from "libram";
-import { Quest, Task } from "../engine/task";
-import { OutfitSpec, step } from "grimoire-kolmafia";
-import { Priorities } from "../engine/priority";
 import { CombatStrategy } from "../engine/combat";
+import { customRestoreMp } from "../engine/moods";
+import { Priorities } from "../engine/priority";
+import { tryPlayApriling } from "../engine/resources";
+import { Quest, Task } from "../engine/task";
 import { atLevel, debug, haveLoathingIdolMicrophone } from "../lib";
 import { councilSafe } from "./level12";
-import { customRestoreMp } from "../engine/moods";
-import { tryPlayApriling } from "../engine/resources";
 
 const Diary: Task[] = [
   {
@@ -304,7 +304,7 @@ const Pyramid: Task[] = [
     after: ["Open Pyramid"],
     completed: () => step("questL11Pyramid") >= 1,
     do: $location`The Upper Chamber`,
-    outfit: { modifier: "+combat" },
+    outfit: { modifier: "-combat" },
     limit: { turns: 6 },
   },
   {
