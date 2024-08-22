@@ -1,6 +1,6 @@
+import { ActionDefaults, CombatStrategy as BaseCombatStrategy } from "grimoire-kolmafia";
 import { haveEquipped, Location, Monster, myAdventures } from "kolmafia";
 import { $item, $skill, Macro } from "libram";
-import { ActionDefaults, CombatStrategy as BaseCombatStrategy } from "grimoire-kolmafia";
 
 const myActions = [
   "ignore", // Task doesn't care what happens
@@ -111,6 +111,7 @@ export function killMacro(): Macro {
   }
 
   return new Macro()
+    .trySkill($skill`Curse of Weaksauce`)
     .while_("!mpbelow 6", new Macro().skill($skill`Saucestorm`))
     .attack()
     .repeat();
