@@ -140,12 +140,7 @@ export const GiantQuest: Quest = {
         containsText(
           $location`The Castle in the Clouds in the Sky (Basement)`.noncombatQueue,
           "Mess Around with Gym"
-        )
-        || (containsText(
-          $location`The Castle in the Clouds in the Sky (Basement)`.noncombatQueue,
-          "Fast and the Furry-ous"
-        ) && have($item`titanium assault umbrella`))
-        || step("questL10Garbage") >= 8,
+        ) || step("questL10Garbage") >= 8,
       prepare: () => {
         tryForceNC()
         tryPlayApriling("-combat");
@@ -169,13 +164,8 @@ export const GiantQuest: Quest = {
       after: ["Basement Search"],
       completed: () => step("questL10Garbage") >= 8,
       do: $location`The Castle in the Clouds in the Sky (Basement)`,
-      outfit: {
-        equip: containsText(
-          $location`The Castle in the Clouds in the Sky (Basement)`.noncombatQueue,
-          "Mess Around with Gym"
-        ) ? $items`amulet of extreme plot significance` : $items`titanium assault umbrella`
-      },
-      choices: { 670: 4, 669: 1 },
+      outfit: { equip: $items`amulet of extreme plot significance` },
+      choices: { 670: 4 },
       limit: { tries: 1 },
     },
     {
