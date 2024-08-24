@@ -1,3 +1,4 @@
+import { OutfitSpec, step } from "grimoire-kolmafia";
 import {
   adv1,
   changeMcd,
@@ -31,14 +32,13 @@ import {
   have,
   Macro,
 } from "libram";
-import { Priority, Quest, Task } from "../engine/task";
-import { OutfitSpec, step } from "grimoire-kolmafia";
 import { CombatStrategy } from "../engine/combat";
-import { atLevel, haveFlorest, haveLoathingIdolMicrophone } from "../lib";
-import { Priorities } from "../engine/priority";
-import { councilSafe } from "./level12";
 import { ensureWithMPSwaps, fillHp } from "../engine/moods";
+import { Priorities } from "../engine/priority";
 import { tryPlayApriling } from "../engine/resources";
+import { Priority, Quest, Task } from "../engine/task";
+import { atLevel, haveFlorest, haveLoathingIdolMicrophone } from "../lib";
+import { councilSafe } from "./level12";
 
 function tuneCape(): void {
   if (
@@ -106,7 +106,7 @@ const Alcove: Task[] = [
       }
       return {
         equip: tryCape($item`antique machete`, ...items),
-        modifier: "init 850max",
+        modifier: "init 850max, -combat",
         modes: {
           backupcamera: "init",
           parka: "pterodactyl",

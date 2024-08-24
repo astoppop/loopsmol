@@ -302,6 +302,7 @@ export function equipDefaults(outfit: Outfit, noFightingFamiliars: boolean): voi
 
   if (outfit.skipDefaults) return;
 
+  if (modifier.includes("init")) outfit.equip($familiar`Oily Woim`);
   if (modifier.includes("-combat")) outfit.equip($familiar`Disgeist`); // low priority
   if (modifier.includes("item")) {
     outfit.equip($familiar`Cat Burglar`);
