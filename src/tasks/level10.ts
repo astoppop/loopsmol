@@ -160,7 +160,13 @@ export const GiantQuest: Quest = {
       combat: new CombatStrategy().startingMacro(
         Macro.trySkill($skill`%fn, let's pledge allegiance to a Zone`)
       ),
-      choices: { 670: 5, 669: 1, 671: 4 },
+      choices: () => {
+        if (have($item`titanium assault umbrella`)) {
+          return { 670: 5, 669: 3, 671: 4 }
+        } else {
+          return { 670: 5, 669: 1, 671: 4 }
+        }
+      },
       ncforce: true,
       limit: { soft: 20 },
     },
