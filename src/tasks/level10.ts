@@ -1,3 +1,4 @@
+import { step } from "grimoire-kolmafia";
 import { cliExecute, containsText, haveEquipped, itemAmount, use, visitUrl } from "kolmafia";
 import {
   $effect,
@@ -13,12 +14,11 @@ import {
   Macro,
 } from "libram";
 import { CombatStrategy, killMacro } from "../engine/combat";
-import { atLevel } from "../lib";
-import { Quest } from "../engine/task";
-import { step } from "grimoire-kolmafia";
 import { Priorities } from "../engine/priority";
-import { councilSafe } from "./level12";
 import { forceItemPossible, tryForceNC, tryPlayApriling } from "../engine/resources";
+import { Quest } from "../engine/task";
+import { atLevel } from "../lib";
+import { councilSafe } from "./level12";
 
 export const GiantQuest: Quest = {
   name: "Giant",
@@ -121,7 +121,7 @@ export const GiantQuest: Quest = {
         if (have($effect`Temporary Amnesia`)) cliExecute("uneffect Temporary Amnesia");
       },
       orbtargets: () => [],
-      outfit: { modifier: "-combat" },
+      outfit: { modifier: "-combat, 0.01 item" },
       limit: { soft: 50 },
       delay: () =>
         have($item`Plastic Wrap Immateria`) ? 25 : have($item`Gauze Immateria`) ? 20 : 15, // After that, just look for noncombats
