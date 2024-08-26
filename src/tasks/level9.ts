@@ -1,3 +1,4 @@
+import { Guards, OutfitSpec, step } from "grimoire-kolmafia";
 import {
   changeMcd,
   council,
@@ -31,15 +32,14 @@ import {
   have,
   Macro,
 } from "libram";
-import { Priority, Quest, Task } from "../engine/task";
-import { Guards, OutfitSpec, step } from "grimoire-kolmafia";
 import { CombatStrategy } from "../engine/combat";
-import { atLevel } from "../lib";
-import { Priorities } from "../engine/priority";
-import { councilSafe } from "./level12";
 import { customRestoreMp, fillHp } from "../engine/moods";
 import { stenchPlanner } from "../engine/outfit";
+import { Priorities } from "../engine/priority";
 import { tryPlayApriling } from "../engine/resources";
+import { Priority, Quest, Task } from "../engine/task";
+import { atLevel } from "../lib";
+import { councilSafe } from "./level12";
 
 const ABoo: Task[] = [
   {
@@ -183,7 +183,7 @@ const Oil: Task[] = [
           modifier: "ML 80 max, 0.1 item, monster level percent",
           equip: $items`unbreakable umbrella`,
         };
-      else return { modifier: "ML, 0.1 item" };
+      else return { modifier: "ML 100 max, 0.1 item" };
     },
     combat: new CombatStrategy().killItem(),
     limit: { soft: 5 },
@@ -293,7 +293,7 @@ const Twin: Task[] = [
     completed: () => !!(get("twinPeakProgress") & 8),
     do: $location`Twin Peak`,
     choices: { 606: 4, 610: 1, 1056: 1 },
-    outfit: { modifier: "init 40 min, item, -combat" },
+    outfit: { modifier: "init 40 min 40 max, item, -combat" },
     combat: new CombatStrategy().killItem(
       $monsters`bearpig topiary animal, elephant (meatcar?) topiary animal, spider (duck?) topiary animal`
     ),
