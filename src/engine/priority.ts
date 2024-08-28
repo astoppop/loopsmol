@@ -15,10 +15,10 @@ import {
 } from "libram";
 import { CombatStrategy } from "./combat";
 import { moodCompatible } from "./moods";
-import { Priority, Task } from "./task";
-import { globalStateCache } from "./state";
-import { forceItemSources, forceNCPossible, yellowRaySources } from "./resources";
 import { getModifiersFrom } from "./outfit";
+import { forceItemSources, forceNCPossible, yellowRaySources } from "./resources";
+import { globalStateCache } from "./state";
+import { Priority, Task } from "./task";
 
 export class Priorities {
   static Wanderer: Priority = { score: 20000, reason: "Wanderer" };
@@ -35,6 +35,7 @@ export class Priorities {
     reason: "Use cosmic bowling ball + Melodramedary",
   };
   static CosmicBowlingBall: Priority = { score: 11, reason: "Use cosmic bowling ball" };
+  static FreeRun: Priority = { score: 10.5, reason: "Free run away" }
   static GoodYR: Priority = { score: 10, reason: "Yellow ray" };
   static GoodAutumnaton: Priority = { score: 4, reason: "Setup Autumnaton" };
   static GoodCamel: Priority = { score: 3, reason: "Melodramedary is ready" };
@@ -174,16 +175,20 @@ export class Prioritization {
       task.do instanceof Location && location_blacklist.includes(task.do);
     const location_in_whitelist =
       task.do instanceof Location && location_whitelist.includes(task.do);
-    if (have($item`cosmic bowling ball`) || get("cosmicBowlingBallReturnCombats") === 0) {
-      if (
-        location_in_whitelist ||
-        (!task.freeaction &&
-          !task.freecombat &&
-          ball_useful &&
-          !ball_may_not_be_useful &&
-          !location_in_blacklist)
-      ) {
+
+    if (
+      location_in_whitelist ||
+      (!task.freeaction &&
+        !task.freecombat &&
+        ball_useful &&
+        !ball_may_not_be_useful &&
+        !location_in_blacklist)
+    ) {
+      if (have($item`cosmic bowling ball`) || get("cosmicBowlingBallReturnCombats") === 0) {
         result.priorities.add(Priorities.CosmicBowlingBall);
+      }
+      if (!have($effect`Everything Looks Green`) && have($item`spring shoes`)) {
+        result.priorities.add(Priorities.FreeRun);
       }
     }
 
