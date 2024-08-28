@@ -1,18 +1,28 @@
 import {
+  Engine as BaseEngine,
+  CombatResources,
+  CombatStrategy,
+  lastEncounterWasWanderingNC,
+  Outfit,
+} from "grimoire-kolmafia";
+import {
   adv1,
   autosell,
   availableAmount,
   canAdventure,
   choiceFollowsFight,
+  cliExecute,
   descToItem,
   Effect,
   equip,
+  equippedAmount,
   equippedItem,
   familiarEquippedEquipment,
   getWorkshed,
   haveEffect,
   haveEquipped,
   inMultiFight,
+  itemAmount,
   Location,
   logprint,
   myAdventures,
@@ -29,6 +39,7 @@ import {
   print,
   printHtml,
   restoreHp,
+  runChoice,
   runCombat,
   Slot,
   totalTurnsPlayed,
@@ -37,7 +48,6 @@ import {
   useSkill,
   visitUrl,
 } from "kolmafia";
-import { Task } from "./task";
 import {
   $effect,
   $effects,
@@ -58,14 +68,16 @@ import {
   undelay,
   uneffect,
 } from "libram";
-import {
-  Engine as BaseEngine,
-  CombatResources,
-  CombatStrategy,
-  lastEncounterWasWanderingNC,
-  Outfit,
-} from "grimoire-kolmafia";
+import { args } from "../args";
+import { debug } from "../lib";
+import { ROUTE_WAIT_TO_NCFORCE } from "../route";
+import { keyStrategy } from "../tasks/keys";
+import { flyersDone } from "../tasks/level12";
+import { removeTeleportitis, teleportitisTask } from "../tasks/misc";
+import { pullStrategy } from "../tasks/pulls";
+import { summonStrategy } from "../tasks/summons";
 import { CombatActions, MyActionDefaults } from "./combat";
+import { applyEffects, customRestoreMp } from "./moods";
 import {
   cacheDress,
   canEquipResource,
@@ -77,8 +89,7 @@ import {
   fixFoldables,
   getModifiersFrom,
 } from "./outfit";
-import { cliExecute, equippedAmount, itemAmount, runChoice } from "kolmafia";
-import { debug } from "../lib";
+import { Priorities, Prioritization } from "./priority";
 import {
   BackupTarget,
   backupTargets,
@@ -96,16 +107,8 @@ import {
   wandererSources,
   yellowRaySources,
 } from "./resources";
-import { Priorities, Prioritization } from "./priority";
-import { args } from "../args";
-import { flyersDone } from "../tasks/level12";
 import { globalStateCache } from "./state";
-import { removeTeleportitis, teleportitisTask } from "../tasks/misc";
-import { summonStrategy } from "../tasks/summons";
-import { pullStrategy } from "../tasks/pulls";
-import { keyStrategy } from "../tasks/keys";
-import { applyEffects, customRestoreMp } from "./moods";
-import { ROUTE_WAIT_TO_NCFORCE } from "../route";
+import { Task } from "./task";
 
 export const wanderingNCs = new Set<string>([
   "Wooof! Wooooooof!",
@@ -468,9 +471,10 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
       if (
         combat.can("killFree") ||
         ((combat.can("kill") || combat.can("killItem")) &&
-          !task.boss &&
-          this.tasks.every((t) => t.completed() || !t.combat?.can("killFree")) &&
-          get("sidequestNunsCompleted") !== "none")
+          !task.boss
+          // && this.tasks.every((t) => t.completed() || !t.combat?.can("killFree")
+        )
+        // && get("sidequestNunsCompleted") !== "none")
       ) {
         resources.provide("killFree", equipFirst(outfit, freekillSources));
       }
