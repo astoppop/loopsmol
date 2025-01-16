@@ -305,7 +305,7 @@ export function equipDefaults(outfit: Outfit, noFightingFamiliars: boolean): voi
   if (modifier.includes("init")) outfit.equip($familiar`Oily Woim`);
   if (modifier.includes("-combat")) outfit.equip($familiar`Disgeist`); // low priority
   if (modifier.includes("item")) {
-    outfit.equip($familiar`Cat Burglar`);
+    outfit.equip($familiar`Chest Mimic`);
     outfit.equip($familiar`Baby Gravy Fairy`);
   }
 
@@ -317,7 +317,7 @@ export function equipDefaults(outfit: Outfit, noFightingFamiliars: boolean): voi
     else outfit.equip($familiar`Jill-of-All-Trades`);
   }
 
-  outfit.equip($familiar`Blood-Faced Volleyball`); // default
+  outfit.equip($familiar`Chest Mimic`); // default
 
   outfit.equip($item`mafia thumb ring`);
   if (atLevel(11)) outfit.equip($item`lucky gold ring`);
