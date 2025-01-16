@@ -792,7 +792,7 @@ export function forceNCPossible(): boolean {
 type ForceNCSource = {
   available: () => boolean;
   do: () => void;
-}
+};
 
 const tuba = $item`Apriling band tuba`;
 
@@ -807,7 +807,8 @@ export const noncombatForceNCSources: ForceNCSource[] = [
   }, {
     available: () => args.minor.pillkeeper && spleenLimit() - mySpleenUse() >= 3,
     do: () => cliExecute("pillkeeper noncombat")
-  }];
+  }
+];
 
 export function tryForceNC(): boolean {
   if (get("noncombatForcerActive")) return true;
@@ -819,15 +820,15 @@ export function tryPlayApriling(modifier: string): void {
   if (!AprilingBandHelmet.have()) return;
 
   if (modifier.includes("+combat")) {
-    AprilingBandHelmet.conduct("Apriling Band Battle Cadence")
+    AprilingBandHelmet.conduct("Apriling Band Battle Cadence");
   }
 
   if (modifier.includes("-combat")) {
-    AprilingBandHelmet.conduct("Apriling Band Patrol Beat")
+    AprilingBandHelmet.conduct("Apriling Band Patrol Beat");
   }
 
   if (modifier.includes("food") || modifier.includes("booze")) {
-    AprilingBandHelmet.conduct("Apriling Band Celebration Bop")
+    AprilingBandHelmet.conduct("Apriling Band Celebration Bop");
   }
 }
 

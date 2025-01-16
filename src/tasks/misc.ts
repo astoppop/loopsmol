@@ -1303,12 +1303,23 @@ export const MiscQuest: Quest = {
     {
       name: "Acquire Tuba",
       priority: () => Priorities.Free,
-      ready: () =>
-        !args.minor.savetuba && AprilingBandHelmet.canJoinSection(),
+      ready: () => !args.minor.savetuba && AprilingBandHelmet.canJoinSection(),
       completed: () => have($item`Apriling band tuba`),
       do: () => AprilingBandHelmet.joinSection($item`Apriling band tuba`),
       limit: { tries: 1 },
       freeaction: true,
+    },
+    {
+      name: "Open McHugeLarge Bag",
+      after: [],
+      priority: () => Priorities.Free,
+      completed: () =>
+        // eslint-disable-next-line libram/verify-constants
+        !have($item`McHugeLarge duffel bag`) || have($item`McHugeLarge right pole`),
+      // eslint-disable-next-line libram/verify-constants
+      do: () => visitUrl("inventory.php?action=skiduffel&pwd"),
+      freeaction: true,
+      limit: { tries: 1 },
     },
   ],
 };
