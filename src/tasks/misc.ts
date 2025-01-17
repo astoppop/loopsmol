@@ -69,6 +69,7 @@ import {
   have,
   haveInCampground,
   Macro,
+  MayamCalendar,
   Robortender,
   set,
   undelay,
@@ -111,6 +112,22 @@ export const MiscQuest: Quest = {
       freeaction: true,
     },
     {
+      name: "Mayam Calendar",
+      priority: () => Priorities.Free,
+      completed: () => !MayamCalendar.have() || MayamCalendar.remainingUses() === 0,
+      do: () => {
+        cliExecute("mayam rings fur lightning eyepatch yam");
+        cliExecute("mayam rings chair wood cheese clock");
+        cliExecute("mayam rings eye meat wall explosion");
+      },
+      outfit: () => {
+        if (have($familiar`Chest Mimic`)) return { familiar: $familiar`Chest Mimic` };
+        return { familiar: $familiar`Grey Goose` };
+      },
+      limit: { tries: 2 },
+      freeaction: true,
+    },
+    {
       name: "Island Scrip",
       after: ["Unlock Beach", "Acquire Red Rocket"],
       ready: () =>
@@ -123,7 +140,8 @@ export const MiscQuest: Quest = {
         have($item`dingy dinghy`) ||
         have($item`junk junk`) ||
         have($item`skeletal skiff`) ||
-        have($item`yellow submarine`),
+        have($item`yellow submarine`) ||
+        get("_pirateDinghyUsed"),
       do: $location`The Shore, Inc. Travel Agency`,
       outfit: () => {
         if (!get("candyCaneSwordShore")) return { equip: $items`candy cane sword cane` };
@@ -142,6 +160,22 @@ export const MiscQuest: Quest = {
       limit: { tries: 5 },
     },
     {
+      name: "Unlock Island Takerspace",
+      priority: () => Priorities.Free,
+      ready: () =>
+        getWorkshed() === $item`TakerSpace letter of Marque` || have($item`pirate dinghy`),
+      completed: () =>
+        get("_pirateDinghyUsed") ||
+        (!have($item`pirate dinghy`) &&
+          (get("takerSpaceAnchor") < 1 || get("takerSpaceMast") < 1 || get("takerSpaceSilk") < 1)),
+      do: () => {
+        if (!have($item`pirate dinghy`)) retrieveItem($item`pirate dinghy`);
+        use($item`pirate dinghy`);
+      },
+      limit: { tries: 1 },
+      freeaction: true,
+    },
+    {
       name: "Unlock Island",
       after: ["Island Scrip"],
       ready: () =>
@@ -150,7 +184,8 @@ export const MiscQuest: Quest = {
         have($item`dingy dinghy`) ||
         have($item`junk junk`) ||
         have($item`skeletal skiff`) ||
-        have($item`yellow submarine`),
+        have($item`yellow submarine`) ||
+        get("_pirateDinghyUsed"),
       do: () => {
         retrieveItem($item`dingy planks`);
         retrieveItem($item`dinghy plans`);
@@ -171,7 +206,8 @@ export const MiscQuest: Quest = {
         have($item`dingy dinghy`) ||
         have($item`junk junk`) ||
         have($item`skeletal skiff`) ||
-        have($item`yellow submarine`),
+        have($item`yellow submarine`) ||
+        get("_pirateDinghyUsed"),
       do: () => {
         retrieveItem($item`yellow submarine`);
       },
@@ -618,7 +654,8 @@ export const MiscQuest: Quest = {
       after: [],
       priority: () => Priorities.Free,
       ready: () =>
-        get("_coldMedicineConsults") >= 5 && getWorkshed() === $item`cold medicine cabinet`,
+        (get("_coldMedicineConsults") >= 5 && getWorkshed() === $item`cold medicine cabinet`) ||
+        (get("_pirateDinghyUsed") && getWorkshed() === $item`TakerSpace letter of Marque`),
       completed: () =>
         !have(args.major.swapworkshed) || get("_workshedItemUsed") || myTurncount() >= 1000,
       do: () => use(args.major.swapworkshed),
@@ -1313,10 +1350,7 @@ export const MiscQuest: Quest = {
       name: "Open McHugeLarge Bag",
       after: [],
       priority: () => Priorities.Free,
-      completed: () =>
-        // eslint-disable-next-line libram/verify-constants
-        !have($item`McHugeLarge duffel bag`) || have($item`McHugeLarge right pole`),
-      // eslint-disable-next-line libram/verify-constants
+      completed: () => !have($item`McHugeLarge duffel bag`) || have($item`McHugeLarge right pole`),
       do: () => visitUrl("inventory.php?action=skiduffel&pwd"),
       freeaction: true,
       limit: { tries: 1 },
