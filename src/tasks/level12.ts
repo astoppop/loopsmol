@@ -1,3 +1,4 @@
+import { Guards, OutfitSpec, step } from "grimoire-kolmafia";
 import {
   cliExecute,
   effectModifier,
@@ -33,14 +34,14 @@ import {
   set,
   uneffect,
 } from "libram";
-import { Priority, Quest, Task } from "../engine/task";
-import { Guards, OutfitSpec, step } from "grimoire-kolmafia";
-import { Priorities } from "../engine/priority";
-import { CombatStrategy } from "../engine/combat";
-import { atLevel, debug } from "../lib";
-import { forceItemPossible, yellowRayPossible } from "../engine/resources";
+import { mapMonster } from "libram/dist/resources/2020/Cartography";
 import { args } from "../args";
+import { CombatStrategy } from "../engine/combat";
 import { customRestoreMp, fillHp } from "../engine/moods";
+import { Priorities } from "../engine/priority";
+import { forceItemPossible, yellowRayPossible } from "../engine/resources";
+import { Priority, Quest, Task } from "../engine/task";
+import { atLevel, debug } from "../lib";
 
 export function flyersDone(): boolean {
   return get("flyeredML") >= 10000;
@@ -104,7 +105,16 @@ const Lighthouse: Task[] = [
       }
       return Priorities.None;
     },
-    do: $location`Sonofa Beach`,
+    do: () => {
+      if (
+        get("_saberForceMonster") !== $monster`lobsterfrogman` ||
+        get("_saberForceMonsterCount") === 0
+      ) {
+        return mapMonster($location`Sonofa Beach`, $monster`lobsterfrogman`);
+      } else {
+        return $location`Sonofa Beach`;
+      }
+    },
     outfit: (): OutfitSpec => {
       if (AutumnAton.have() || !have($item`Fourth of May Cosplay Saber`))
         return { modifier: "+combat" };
@@ -370,8 +380,8 @@ const Orchard: Task[] = [
       .macro(() =>
         Macro.externalIf(
           have($skill`Emotionally Chipped`) &&
-            get("_feelEnvyUsed") < 3 &&
-            have($effect`Everything Looks Yellow`),
+          get("_feelEnvyUsed") < 3 &&
+          have($effect`Everything Looks Yellow`),
           Macro.trySkill($skill`Feel Envy`),
           Macro.trySkill($skill`Fire Extinguisher: Polar Vortex`)
         )
@@ -406,8 +416,8 @@ const Orchard: Task[] = [
       .macro(() =>
         Macro.externalIf(
           have($skill`Emotionally Chipped`) &&
-            get("_feelEnvyUsed") < 3 &&
-            have($effect`Everything Looks Yellow`),
+          get("_feelEnvyUsed") < 3 &&
+          have($effect`Everything Looks Yellow`),
           Macro.trySkill($skill`Feel Envy`),
           Macro.trySkill($skill`Fire Extinguisher: Polar Vortex`)
         )
@@ -442,8 +452,8 @@ const Orchard: Task[] = [
       .macro(() =>
         Macro.externalIf(
           have($skill`Emotionally Chipped`) &&
-            get("_feelEnvyUsed") < 3 &&
-            have($effect`Everything Looks Yellow`),
+          get("_feelEnvyUsed") < 3 &&
+          have($effect`Everything Looks Yellow`),
           Macro.trySkill($skill`Feel Envy`),
           Macro.trySkill($skill`Fire Extinguisher: Polar Vortex`)
         )

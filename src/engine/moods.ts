@@ -54,8 +54,8 @@ import { asdonFillTo, asdonFualable } from "./resources";
 
 function getRelevantEffects(): { [modifier: string]: Effect[] } {
   const result = {
-    "-combat": $effects`Smooth Movements, The Sonata of Sneakiness, Ultra-Soft Steps, Hiding From Seekers`,
-    "+combat": $effects`Carlweather's Cantata of Confrontation, Musk of the Moose, Crunchy Steps, Attracting Snakes`,
+    "-combat": $effects`Smooth Movements, The Sonata of Sneakiness, Hiding From Seekers`,
+    "+combat": $effects`Carlweather's Cantata of Confrontation, Musk of the Moose, Attracting Snakes`,
     "":
       myMeat() > 0 ? $effects`Empathy, Leash of Linguini, Astral Shell, Elemental Saucesphere` : [],
     "fam weight": $effects`Chorale of Companionship`,
