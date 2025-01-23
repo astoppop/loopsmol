@@ -116,7 +116,11 @@ export const args = Args.create(
       pillkeeper: Args.flag({
         help: "Use spleen to force noncombats",
         default: true
-      })
+      }),
+      warProfiteering: Args.flag({
+        help: "Once we have 20 gauze garters, convert war items into items that autosell for meat",
+        default: false,
+      }),
     }),
     debug: Args.group("Debug Options", {
       actions: Args.number({
