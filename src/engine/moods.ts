@@ -1,3 +1,4 @@
+import { step } from "grimoire-kolmafia";
 import {
   autosell,
   canEquip,
@@ -70,22 +71,24 @@ function getRelevantEffects(): { [modifier: string]: Effect[] } {
   };
   const all_attributes = [] as Effect[];
 
-  if (
-    have($item`Clan VIP Lounge key`) &&
-    !underStandard() &&
-    (!get("_olympicSwimmingPool") || have($effect`Silent Running`))
-  )
-    result["-combat"].push($effect`Silent Running`);
+  if (step("questM20Necklace") === 999) {
+    // Start considering good -combat buffs
+    if (
+      have($item`Clan VIP Lounge key`) &&
+      !underStandard() &&
+      (!get("_olympicSwimmingPool") || have($effect`Silent Running`))
+    )
+      result["-combat"].push($effect`Silent Running`);
 
-  if (
-    have($item`Clan VIP Lounge key`) &&
-    (get("_photoBoothEffects", 0) < 3 || have($effect`Wild and Westy!`)) &&
-    have($item`Talisman o' Namsilat`)
-  )
-    result["-combat"].push($effect`Wild and Westy!`);
+    if (
+      have($item`Clan VIP Lounge key`) &&
+      (get("_photoBoothEffects", 0) < 3 || have($effect`Wild and Westy!`))
+    )
+      result["-combat"].push($effect`Wild and Westy!`);
 
-  if (have($skill`Emotionally Chipped`) && get("_feelLonelyUsed") < 3)
-    result["-combat"].push($effect`Feeling Lonely`);
+    if (have($skill`Emotionally Chipped`) && get("_feelLonelyUsed") < 3)
+      result["-combat"].push($effect`Feeling Lonely`);
+  }
 
   if (myClass() !== $class`Pastamancer`) {
     result["init"].push($effect`Whispering Strands`);

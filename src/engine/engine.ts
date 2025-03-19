@@ -26,6 +26,7 @@ import {
   Location,
   logprint,
   myAdventures,
+  myFamiliar,
   myFullness,
   myHp,
   myLevel,
@@ -69,9 +70,9 @@ import {
   undelay,
   uneffect,
 } from "libram";
-import { args } from "../args";
+import { args, toTempPref } from "../args";
 import { debug } from "../lib";
-import { ROUTE_WAIT_TO_NCFORCE } from "../route";
+import { ROUTE_WAIT_TO_EVENTUALLY_NCFORCE, ROUTE_WAIT_TO_NCFORCE } from "../route";
 import { keyStrategy } from "../tasks/keys";
 import { flyersDone } from "../tasks/level12";
 import { removeTeleportitis, teleportitisTask } from "../tasks/misc";
@@ -81,7 +82,6 @@ import { CombatActions, MyActionDefaults } from "./combat";
 import { applyEffects, customRestoreMp } from "./moods";
 import {
   cacheDress,
-  canEquipResource,
   equipCharging,
   equipDefaults,
   equipFirst,
@@ -92,24 +92,22 @@ import {
 } from "./outfit";
 import { Priorities, Prioritization } from "./priority";
 import {
-  BackupTarget,
-  backupTargets,
   canChargeVoid,
   CombatResource,
   forceItemSources,
   forceNCPossible,
   forceNCSources,
   freekillSources,
+  getActiveBackupTarget,
   getRunawaySources,
   refillLatte,
   shouldFinishLatte,
   unusedBanishes,
-  WandererSource,
   wandererSources,
   yellowRaySources,
 } from "./resources";
 import { globalStateCache } from "./state";
-import { Task } from "./task";
+import { hasDelay, NCForce, Task } from "./task";
 
 export const wanderingNCs = new Set<string>([
   "Wooof! Wooooooof!",
@@ -127,8 +125,6 @@ export const wanderingNCs = new Set<string>([
 ]);
 
 type ActiveTask = Task & {
-  wanderer?: WandererSource;
-  backup?: BackupTarget;
   active_priority?: Prioritization;
   other_effects?: Effect[];
 };
@@ -159,12 +155,6 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
     }
   }
 
-  public hasDelay(task: Task): boolean {
-    if (!task.delay) return false;
-    if (!(task.do instanceof Location)) return false;
-    return task.do.turnsSpent < undelay(task.delay);
-  }
-
   public getNextTask(): ActiveTask | undefined {
     this.updatePlan();
     const available_tasks = this.tasks.filter((task) => this.available(task));
@@ -183,81 +173,7 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
       return { ...teleportitis, active_priority: Prioritization.fixed(Priorities.Always) };
     }
 
-    // First, check for any heavily prioritized tasks
-    const priority = available_tasks.find((task) => {
-      const priority = task.priority?.();
-      return priority === Priorities.LastCopyableMonster || priority === Priorities.Free;
-    });
-    if (priority !== undefined) {
-      return {
-        ...priority,
-      };
-    }
-
-    // If a backup target is up try to place it in a useful location
-    const backup = backupTargets.find(
-      (target) => !target.completed() && target.monster === get("lastCopyableMonster")
-    );
-    if (backup && have($item`backup camera`)) {
-      const backup_outfit = undelay(backup.outfit) ?? {};
-      if ("equip" in backup_outfit) backup_outfit.equip?.push($item`backup camera`);
-      else backup_outfit.equip = [$item`backup camera`];
-
-      const possible_locations = available_tasks.filter(
-        (task) => this.hasDelay(task) && this.createOutfit(task).canEquip(backup_outfit)
-      );
-      if (possible_locations.length > 0) {
-        if (args.debug.verbose) {
-          printHtml(
-            `A backup target (${backup.monster}) is available to place in a delay zone. Available zones:`
-          );
-          for (const task of possible_locations) {
-            printHtml(`${task.name}`);
-          }
-        }
-        return {
-          ...possible_locations[0],
-          active_priority: Prioritization.fixed(Priorities.Wanderer),
-          backup: backup,
-        };
-      } else {
-        logprint(`Backup ${backup.monster} is ready but no tasks have delay`);
-        if (backup.monster !== $monster`Eldritch Tentacle`)
-          return {
-            name: `Backup ${backup.monster}`,
-            completed: () => false,
-            do: $location`Noob Cave`,
-            limit: { tries: backup.limit_tries },
-          };
-      }
-    }
-
-    // If a wanderer is up try to place it in a useful location
-    const wanderer = wandererSources.find((source) => source.available() && source.chance() === 1);
-    if (wanderer) {
-      const possible_locations = available_tasks.filter(
-        (task) => this.hasDelay(task) && canEquipResource(this.createOutfit(task), wanderer)
-      );
-      if (possible_locations.length > 0) {
-        if (args.debug.verbose) {
-          printHtml(
-            `A wanderer (${wanderer.name}) is available to place in a delay zone. Available zones:`
-          );
-          for (const task of possible_locations) {
-            printHtml(`${task.name}`);
-          }
-        }
-        return {
-          ...possible_locations[0],
-          active_priority: Prioritization.fixed(Priorities.Wanderer),
-          wanderer: wanderer,
-        };
-      } else {
-        logprint(`Wanderer ${wanderer.name} is ready but no tasks have delay`);
-      }
-    }
-
-    // Finally, choose from all available tasks
+    // Otherwise, choose from all available tasks
     const task_priorities = available_tasks.map((task) => {
       return { ...task, active_priority: Prioritization.from(task) };
     });
@@ -321,27 +237,35 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
     combat: CombatStrategy<CombatActions>,
     resources: CombatResources<CombatActions>
   ): void {
-    const wanderers = task.wanderer ? [task.wanderer] : [];
-    for (const wanderer of wanderers) {
-      if (!equipFirst(outfit, [wanderer]))
-        throw `Wanderer equipment ${wanderer.equip} conflicts with ${task.name}`;
+    if (undelay(task.freeaction)) {
+      // Prepare only as requested by the task
+      return;
     }
 
-    // Setup a backup
-    if (task.backup && args.minor.skipbackups !== true) {
+    // Setup forced wanderers
+    const wanderers = [];
+    if (task.active_priority?.has(Priorities.Wanderer)) {
+      const prioritizedWanderer = wandererSources.find(
+        (source) => source.available() && source.chance() === 1
+      );
+      if (!prioritizedWanderer) throw `Wanderer prioritized but no wanderer found`;
+      if (!equipFirst(outfit, [prioritizedWanderer]))
+        throw `Wanderer equipment ${prioritizedWanderer.equip} conflicts with ${task.name}`;
+      wanderers.push(prioritizedWanderer);
+    }
+
+    // Setup forced backups
+    if (task.active_priority?.has(Priorities.LastCopyableMonster)) {
+      const backup = getActiveBackupTarget();
+      if (!backup) throw `Backup requested but lastCopyableMonster changed?`;
       if (!outfit.equip($item`backup camera`)) throw `Cannot force backup camera on ${task.name}`;
-      if (task.backup.outfit && !outfit.equip(undelay(task.backup.outfit)))
-        throw `Cannot match equip for backup ${task.backup.monster} on ${task.name}`;
+      if (backup.outfit && !outfit.equip(undelay(backup.outfit)))
+        throw `Cannot match equip for backup ${backup.monster} on ${task.name}`;
       outfit.equip({ avoid: $items`carnivorous potted plant` });
       combat.startingMacro(
         Macro.if_("!monsterid 49", Macro.trySkill($skill`Back-Up to your Last Enemy`))
       );
       combat.action("killHard");
-    }
-
-    if (undelay(task.freeaction)) {
-      // Prepare only as requested by the task
-      return;
     }
 
     // Equip initial equipment
@@ -391,6 +315,7 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
       have($item`red rocket`) &&
       myFullness() === 0 &&
       myTurncount() > 1 &&
+      myLevel() < 12 &&
       !have($effect`Everything Looks Red`)
     ) {
       combat.macro(new Macro().tryItem($item`red rocket`), undefined, true);
@@ -487,7 +412,7 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
       const nc_blacklist = new Set<Location>(
         $locations`The Enormous Greater-Than Sign, The Copperhead Club, The Black Forest`
       );
-      const nc_task_blacklist = new Set<string>([]);
+      const nc_task_blacklist = new Set<string>(["Misc/Protonic Ghost"]);
       if (
         forceNCPossible() &&
         !(task.do instanceof Location && nc_blacklist.has(task.do)) &&
@@ -496,14 +421,16 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
         force_item_source?.equip !== $item`Fourth of May Cosplay Saber` &&
         !get("noncombatForcerActive")
       ) {
+        const allowableNCForce: (NCForce | undefined)[] = [];
+        if (myTurncount() >= ROUTE_WAIT_TO_NCFORCE) allowableNCForce.push(NCForce.Yes);
+        if (myTurncount() >= ROUTE_WAIT_TO_EVENTUALLY_NCFORCE)
+          allowableNCForce.push(NCForce.Eventually);
         if (
-          myTurncount() >= ROUTE_WAIT_TO_NCFORCE &&
           this.tasks.find(
             (t) =>
-              t.ncforce !== undefined &&
+              allowableNCForce.includes(undelay(t.ncforce)) &&
               this.available(t) &&
-              t.name !== task.name &&
-              undelay(t.ncforce)
+              t.name !== task.name
           ) !== undefined
         ) {
           const ncforcer = equipFirst(outfit, forceNCSources);
@@ -516,14 +443,14 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
 
     if (
       wanderers.length === 0 &&
-      this.hasDelay(task) &&
+      hasDelay(task) &&
       !get("noncombatForcerActive") &&
-      !task.backup
+      !task.active_priority?.has(Priorities.LastCopyableMonster)
     )
       wanderers.push(...equipUntilCapped(outfit, wandererSources));
 
     const mightKillSomething =
-      task.wanderer !== undefined ||
+      task.active_priority?.has(Priorities.Wanderer) ||
       task.combat?.can("kill") ||
       task.combat?.can("killHard") ||
       task.combat?.can("killItem") ||
@@ -633,8 +560,10 @@ export class Engine extends BaseEngine<CombatActions, ActiveTask> {
     const equipped = [...new Set(Slot.all().map((slot) => equippedItem(slot)))];
     if (args.debug.verboseequip) {
       print(`Equipped: ${equipped.join(", ")}`);
+      print(`Familiar: ${myFamiliar()}`);
     } else {
       logprint(`Equipped: ${equipped.join(", ")}`);
+      print(`Familiar: ${myFamiliar()}`);
     }
     logModifiers(outfit);
 
@@ -897,7 +826,7 @@ function autosellJunk(): void {
 
 function getExtros(): void {
   // Mafia doesn't always notice the workshed
-  if (!get("_loopsmol_checkworkshed", false)) {
+  if (!get(toTempPref("checkWorkshed"), false)) {
     const workshed = visitUrl("campground.php?action=workshed");
     if (
       workshed.includes("Cold Medicine Cabinet") &&
@@ -905,7 +834,7 @@ function getExtros(): void {
     ) {
       throw `Mafia is not detecting your cold medicine cabinet; consider visiting manually`;
     }
-    set("_loopsmol_checkworkshed", true);
+    set(toTempPref("checkWorkshed"), true);
   }
 
   if (get("_coldMedicineConsults") >= 5) return;
@@ -966,10 +895,20 @@ const modifierNames: { [name: string]: string } = {
   meat: "Meat Drop",
   ml: "Monster Level",
   "stench res": "Stench Resistance",
+  "stench dmg": "Stench Damage",
+  "stench spell dmg": "Stench Spell Damage",
   "hot res": "Hot Resistance",
+  "hot dmg": "Hot Damage",
+  "hot spell dmg": "Hot Spell Damage",
   "cold res": "Cold Resistance",
+  "cold dmg": "Cold Damage",
+  "cold spell dmg": "Cold Spell Damage",
   "spooky res": "Spooky Resistance",
+  "spooky dmg": "Spooky Damage",
+  "spooky spell dmg": "Spooky Spell Damage",
   "sleaze res": "Sleaze Resistance",
+  "sleaze dmg": "Sleaze Damage",
+  "sleaze spell dmg": "Sleaze Spell Damage",
   init: "Initiative",
   "booze drop": "Booze Drop",
   "food drop": "Food Drop",

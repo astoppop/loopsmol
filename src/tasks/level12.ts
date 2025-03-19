@@ -35,12 +35,17 @@ import {
   uneffect,
 } from "libram";
 import { mapMonster } from "libram/dist/resources/2020/Cartography";
-import { args } from "../args";
+import { args, toTempPref } from "../args";
 import { CombatStrategy } from "../engine/combat";
 import { customRestoreMp, fillHp } from "../engine/moods";
 import { Priorities } from "../engine/priority";
-import { forceItemPossible, yellowRayPossible } from "../engine/resources";
-import { Priority, Quest, Task } from "../engine/task";
+import {
+  forceItemPossible,
+  tryForceNC,
+  tryPlayApriling,
+  yellowRayPossible,
+} from "../engine/resources";
+import { NCForce, Priority, Quest, Task } from "../engine/task";
 import { atLevel, debug } from "../lib";
 
 export function flyersDone(): boolean {
@@ -80,12 +85,12 @@ const Flyers: Task[] = [
       if (have($item`rock band flyers`)) {
         debug("Mafia tracking was incorrect for rock band flyers; continuing to flyer...");
         set(
-          "_loopsmol_flyeredML_buffer",
-          get("_loopsmol_flyeredML_buffer", 0) + (get("flyeredML") - 9900)
+          toTempPref("flyeredML_buffer"),
+          get(toTempPref("flyeredML_buffer"), 0) + (get("flyeredML") - 9900)
         );
         set("flyeredML", 9900);
-      } else if (get("_loopsmol_flyeredML_buffer", 0) > 0) {
-        const real = get("flyeredML") + get("_loopsmol_flyeredML_buffer", 0);
+      } else if (get(toTempPref("flyeredML_buffer"), 0) > 0) {
+        const real = get("flyeredML") + get(toTempPref("flyeredML_buffer"), 0);
         debug(`Mafia tracking was incorrect for rock band flyers; quest completed at ${real}`);
       }
     },
@@ -95,8 +100,6 @@ const Flyers: Task[] = [
 ];
 
 const Lighthouse: Task[] = [
-  // Saber into more lobsterfrogmen
-  // Or backup into the Boss Bat's lair
   {
     name: "Lighthouse Saber",
     after: ["Enrage"],
@@ -168,10 +171,7 @@ const Lighthouse: Task[] = [
     after: ["Enrage"],
     ready: () => step("questL04Bat") >= 3 || have($item`Fourth of May Cosplay Saber`) || get("_saberForceMonster") !== $monster`lobsterfrogman` || get("_saberForceMonsterCount") === 0,
     completed: () =>
-      itemAmount($item`barrel of gunpowder`) >= 5 ||
-      get("sidequestLighthouseCompleted") !== "none" ||
-      !have($item`backup camera`) ||
-      !have($item`Fourth of May Cosplay Saber`),
+      itemAmount($item`barrel of gunpowder`) >= 5 || get("sidequestLighthouseCompleted") !== "none",
     priority: (): Priority => {
       if (AutumnAton.have()) {
         if ($location`Sonofa Beach`.turnsSpent === 0) return Priorities.GoodAutumnaton;
@@ -218,7 +218,7 @@ const Lighthouse: Task[] = [
     expectbeatenup: () => get("lastEncounter") === "Zerg Rush",
     choices: { 1387: 2 },
     limit: {
-      tries: 20,
+      soft: 40,
       guard: Guards.create(
         () => itemAmount($item`figurine of a sleek seal`),
         (sleek) =>
@@ -230,27 +230,8 @@ const Lighthouse: Task[] = [
     },
   },
   {
-    name: "Lighthouse Basic",
-    after: ["Enrage", "Lighthouse"],
-    priority: (): Priority => {
-      if (AutumnAton.have()) {
-        if ($location`Sonofa Beach`.turnsSpent === 0) return Priorities.GoodAutumnaton;
-        else return Priorities.BadAutumnaton;
-      }
-      return Priorities.None;
-    },
-    completed: () =>
-      itemAmount($item`barrel of gunpowder`) >= 5 || get("sidequestLighthouseCompleted") !== "none",
-    do: $location`Sonofa Beach`,
-    outfit: { modifier: "+combat" },
-    combat: new CombatStrategy().kill($monster`lobsterfrogman`),
-    orbtargets: () => undefined,
-    expectbeatenup: () => get("lastEncounter") === "Zerg Rush",
-    limit: { soft: 40 },
-  },
-  {
     name: "Lighthouse End",
-    after: ["Lighthouse Basic"],
+    after: ["Lighthouse"],
     completed: () => get("sidequestLighthouseCompleted") !== "none",
     outfit: { equip: $items`beer helmet, distressed denim pants, bejeweled pledge pin` },
     do: (): void => {
@@ -692,26 +673,32 @@ export const WarQuest: Quest = {
       prepare: () => {
         // Restore a bit more HP than usual
         if (myHp() < 80 && myHp() < myMaxhp()) restoreHp(myMaxhp() < 80 ? myMaxhp() : 80);
+        if (have($item`candy cane sword cane`) || have($skill`Comprehensive Cartography`))
+          tryForceNC();
+        tryPlayApriling("-combat");
       },
       outfit: () => {
         const result = <OutfitSpec>{
-          // eslint-disable-next-line libram/verify-constants
           equip: $items`beer helmet, distressed denim pants, bejeweled pledge pin`,
           familiar: args.minor.jellies ? $familiar`Space Jellyfish` : undefined,
           modifier: "-combat",
         };
         if (!have($skill`Comprehensive Cartography`))
-          // eslint-disable-next-line libram/verify-constants
           result.equip?.push($item`candy cane sword cane`);
         return result;
       },
       combat: new CombatStrategy().macro(Macro.trySkill($skill`Extract Jelly`)),
       do: $location`Wartime Hippy Camp (Frat Disguise)`,
       choices: () => {
-        // eslint-disable-next-line libram/verify-constants
         if (haveEquipped($item`candy cane sword cane`))
           return { 139: 4, 140: 4, 141: 3, 142: 3, 143: 3, 144: 3, 145: 1, 146: 3, 1433: 3 };
         else return { 139: 3, 140: 3, 141: 3, 142: 3, 143: 3, 144: 3, 145: 1, 146: 3, 1433: 3 };
+      },
+      ncforce: () => {
+        if (have($item`candy cane sword cane`) || have($skill`Comprehensive Cartography`)) {
+          return NCForce.Yes;
+        }
+        return NCForce.No;
       },
       limit: { soft: 20 },
     },

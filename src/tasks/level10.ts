@@ -60,6 +60,7 @@ export const GiantQuest: Quest = {
     {
       name: "Grow Beanstalk",
       after: ["Start", "Get Bean"],
+      priority: () => Priorities.Free,
       completed: () => step("questL10Garbage") >= 1,
       do: () => use($item`enchanted bean`),
       outfit: { equip: $items`spring shoes` },
@@ -72,6 +73,8 @@ export const GiantQuest: Quest = {
       prepare: () => tryPlayApriling("-combat"),
       completed: () => have($item`amulet of extreme plot significance`),
       do: $location`The Penultimate Fantasy Airship`,
+      // Other options (bat wings) are sometimes chosen by choice script
+      choices: { 182: 1 },
       post: () => {
         if (have($effect`Temporary Amnesia`)) cliExecute("uneffect Temporary Amnesia");
       },
@@ -112,6 +115,8 @@ export const GiantQuest: Quest = {
       after: ["Airship YR Healer"],
       completed: () => have($item`S.O.C.K.`),
       do: $location`The Penultimate Fantasy Airship`,
+      // Other options (bat wings) are sometimes chosen by choice script
+      choices: { 182: 1 },
       post: () => {
         if (have($effect`Temporary Amnesia`)) cliExecute("uneffect Temporary Amnesia");
       },
@@ -130,7 +135,7 @@ export const GiantQuest: Quest = {
     },
     {
       name: "Basement Search",
-      after: ["Airship"],
+      after: ["Airship", "Airship YR Healer"],
       completed: () =>
         containsText(
           $location`The Castle in the Clouds in the Sky (Basement)`.noncombatQueue,
@@ -151,7 +156,6 @@ export const GiantQuest: Quest = {
         Macro.trySkill($skill`%fn, let's pledge allegiance to a Zone`)
       ),
       choices: { 670: 5, 669: 1, 671: 4 },
-      ncforce: true,
       limit: { soft: 20 },
     },
     {
@@ -194,7 +198,7 @@ export const GiantQuest: Quest = {
     },
     {
       name: "Top Floor",
-      after: ["Ground"],
+      after: ["Ground", "Palindome/Hot Snake Precastle"],
       prepare: () => tryPlayApriling("-combat"),
       completed: () => step("questL10Garbage") >= 10,
       do: $location`The Castle in the Clouds in the Sky (Top Floor)`,

@@ -6,7 +6,6 @@ import {
   $items,
   $location,
   $monster,
-  $monsters,
   $skill,
   ensureEffect,
   get,
@@ -34,7 +33,7 @@ export const BatQuest: Quest = {
       freeaction: true,
     },
     {
-      name: "Bat Wings Sonar 1",
+      name: "Bat Wings Entrance",
       priority: () => Priorities.Free,
       after: ["Start"],
       ready: () => have($item`bat wings`),
@@ -48,13 +47,13 @@ export const BatQuest: Quest = {
       post: () => {
         if (have($item`sonar-in-a-biscuit`)) use($item`sonar-in-a-biscuit`);
       },
-      outfit: { modifier: "10 stench res", equip: $items`bat wings` },
+      outfit: { modifier: "10 stench res", equip: $items`bat wings`, avoid: $items`June cleaver` },
       limit: { tries: 1 },
     },
     {
-      name: "Bat Wings Sonar 2",
+      name: "Bat Wings Guano",
       priority: () => Priorities.Free,
-      after: ["Bat Wings Sonar 1"],
+      after: ["Start"],
       ready: () => have($item`bat wings`) && atLevel(4),
       completed: () => get("batWingsGuanoJunction", false),
       do: $location`Guano Junction`,
@@ -66,14 +65,14 @@ export const BatQuest: Quest = {
       post: () => {
         if (have($item`sonar-in-a-biscuit`)) use($item`sonar-in-a-biscuit`);
       },
-      outfit: { modifier: "10 stench res", equip: $items`bat wings` },
+      outfit: { modifier: "10 stench res", equip: $items`bat wings`, avoid: $items`June cleaver` },
       limit: { tries: 1 },
     },
     {
-      name: "Bat Wings Sonar 3",
+      name: "Bat Wings Batrat",
       priority: () => Priorities.Free,
-      after: ["Bat Wings Sonar 2", "Use Sonar 2"],
-      ready: () => have($item`bat wings`) && atLevel(4),
+      after: ["Start", "Use Sonar 1"],
+      ready: () => have($item`bat wings`),
       completed: () => get("batWingsBatratBurrow", false),
       do: $location`The Batrat and Ratbat Burrow`,
       prepare: () => {
@@ -84,13 +83,13 @@ export const BatQuest: Quest = {
       post: () => {
         if (have($item`sonar-in-a-biscuit`)) use($item`sonar-in-a-biscuit`);
       },
-      outfit: { modifier: "10 stench res", equip: $items`bat wings` },
+      outfit: { modifier: "10 stench res", equip: $items`bat wings`, avoid: $items`June cleaver` },
       limit: { tries: 1 },
     },
     {
       name: "Bat Wings Bean",
       priority: () => Priorities.Free,
-      after: ["Bat Wings Sonar 3", "Use Sonar 3"],
+      after: ["Start", "Use Sonar 2"],
       ready: () => have($item`bat wings`),
       completed: () => get("batWingsBeanbatChamber", false),
       do: $location`The Beanbat Chamber`,
@@ -102,7 +101,7 @@ export const BatQuest: Quest = {
       post: () => {
         if (have($item`sonar-in-a-biscuit`)) use($item`sonar-in-a-biscuit`);
       },
-      outfit: { modifier: "10 stench res", equip: $items`bat wings` },
+      outfit: { modifier: "10 stench res", equip: $items`bat wings`, avoid: $items`June cleaver` },
       limit: { tries: 1 },
     },
     {
@@ -206,30 +205,8 @@ export const BatQuest: Quest = {
       freeaction: true,
     },
     {
-      name: "Lobsterfrogman Drop",
-      after: ["Use Sonar 3"],
-      ready: () => get("lastCopyableMonster") === $monster`lobsterfrogman`,
-      priority: () =>
-        get("lastCopyableMonster") === $monster`lobsterfrogman`
-          ? Priorities.LastCopyableMonster
-          : Priorities.None,
-      completed: () =>
-        step("questL04Bat") >= 4 ||
-        itemAmount($item`barrel of gunpowder`) >= 5 ||
-        get("sidequestLighthouseCompleted") !== "none" ||
-        !have($item`backup camera`) ||
-        (have($item`Fourth of May Cosplay Saber`) &&
-          (get("_saberForceUses") < 5 || get("_saberForceMonsterCount") > 0)),
-      do: $location`The Boss Bat's Lair`,
-      combat: new CombatStrategy()
-        .macro(new Macro().trySkill($skill`Back-Up to your Last Enemy`))
-        .kill($monsters`Boss Bat, lobsterfrogman`),
-      outfit: { equip: $items`backup camera` },
-      limit: { tries: 4 },
-    },
-    {
       name: "Boss Bat",
-      after: ["Bat/Use Sonar 3", "Lobsterfrogman Drop"],
+      after: ["Bat/Use Sonar 3"],
       completed: () => step("questL04Bat") >= 4,
       do: $location`The Boss Bat's Lair`,
       combat: new CombatStrategy().killHard($monster`Boss Bat`).ignore(),

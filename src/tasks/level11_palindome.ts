@@ -108,7 +108,7 @@ const Copperhead: Task[] = [
         get("_feelEnvyUsed") < 3 &&
         get("_feelNostalgicUsed") < 3
       )
-        return Priorities.Wanderer;
+        return Priorities.GoodFeelNostalgia;
       else return Priorities.None;
     },
     completed: () =>
@@ -280,7 +280,11 @@ const Zepplin: Task[] = [
         useSkill($skill`Aug. 2nd: Find an Eleven-Leaf Clover Day`);
       if (itemAmount($item`11-leaf clover`) > cloversToSave() && !have($effect`Lucky!`))
         use($item`11-leaf clover`);
-      if (have($item`pocket wish`) && !have($effect`Dirty Pear`))
+      if (
+        !have($item`candy cane sword cane`) &&
+        have($item`pocket wish`) &&
+        !have($effect`Dirty Pear`)
+      )
         cliExecute("genie effect dirty pear");
       if (have($skill`Bend Hell`) && !get("_bendHellUsed"))
         ensureWithMPSwaps([$effect`Bendin' Hell`]);
@@ -304,18 +308,17 @@ const Zepplin: Task[] = [
       };
     },
     outfit: () => {
-      const sleazeitems = $items`candy cane sword cane, deck of lewd playing cards`;
-      if (have($item`designer sweatpants`)) sleazeitems.push($item`designer sweatpants`);
-      else if (have($item`transparent pants`)) sleazeitems.push($item`transparent pants`);
-
+      const sleazeitems = $items`candy cane sword cane, deck of lewd playing cards, June cleaver, designer sweatpants, Jurassic Parka, transparent pants`;
       if (itemAmount($item`11-leaf clover`) > cloversToSave() || have($effect`Lucky!`))
         return {
           modifier: "sleaze dmg, sleaze spell dmg",
           equip: sleazeitems,
+          modes: { parka: "dilophosaur" },
         };
       return {
         modifier: "-combat, sleaze dmg, sleaze spell dmg",
         equip: sleazeitems,
+        modes: { parka: "dilophosaur" },
       };
     },
     freeaction: () => itemAmount($item`11-leaf clover`) > cloversToSave() || have($effect`Lucky!`),
@@ -347,26 +350,14 @@ const Zepplin: Task[] = [
     combat: new CombatStrategy()
       .killHard($monster`Ron "The Weasel" Copperhead`)
       .macro((): Macro => {
-        return Macro.trySkill($skill`%fn, fire a Red, White and Blue Blast`).externalIf(
-          get("_glarkCableUses") < 5,
-          Macro.tryItem($item`glark cable`)
-        );
+        return Macro.externalIf(get("_glarkCableUses") < 5, Macro.tryItem($item`glark cable`));
       }, $monsters`man with the red buttons, red skeleton, red butler`)
       .banish($monsters`Red Herring, Red Snapper`)
       .kill(),
-    orbtargets: () =>
-      get("rwbMonsterCount") > 0 && get("rwbLocation") === $location`The Red Zeppelin`
-        ? undefined
-        : $monsters`man with the red buttons, red skeleton, red butler`,
-    outfit: () => {
-      if (
-        have($familiar`Patriotic Eagle`) &&
-        !have($effect`Everything Looks Red, White and Blue`) &&
-        get("cyrptNicheEvilness") <= 13
-      ) {
-        return { familiar: $familiar`Patriotic Eagle`, modifier: "item" };
-      }
-      return { modifier: "item" };
+    orbtargets: () => $monsters`man with the red buttons, red skeleton, red butler`,
+    outfit: {
+      modifier: "item",
+      avoid: $items`broken champagne bottle`,
     },
     limit: { soft: 13 },
   },

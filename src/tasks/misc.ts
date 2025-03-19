@@ -1,10 +1,10 @@
 import { CombatStrategy, killMacro } from "../engine/combat";
 import {
-  adv1,
   buy,
   cliExecute,
   equippedAmount,
   familiarWeight,
+  floor,
   floristAvailable,
   fullnessLimit,
   gamedayToInt,
@@ -33,6 +33,7 @@ import {
   myTurncount,
   numericModifier,
   print,
+  putCloset,
   retrieveItem,
   runChoice,
   totalFreeRests,
@@ -75,25 +76,22 @@ import {
   MayamCalendar,
   Robortender,
   set,
+  TrainSet,
   undelay,
   uneffect,
 } from "libram";
 import { Quest, Task } from "../engine/task";
-import { Args, Guards, Outfit, OutfitSpec, step } from "grimoire-kolmafia";
+import { Guards, Outfit, OutfitSpec, step } from "grimoire-kolmafia";
 import { Priorities } from "../engine/priority";
-import { Engine, wanderingNCs } from "../engine/engine";
+import { Engine } from "../engine/engine";
 import { Keys, keyStrategy } from "./keys";
 import { atLevel, haveLoathingIdolMicrophone, primestatId, underStandard } from "../lib";
-import { args } from "../args";
+import { args, toTempPref } from "../args";
 import { coldPlanner, yellowSubmarinePossible } from "../engine/outfit";
-import {
-  getTrainsetConfiguration,
-  getTrainsetPositionsUntilConfigurable,
-  setTrainsetConfiguration,
-  TrainsetPiece,
-} from "./trainrealm";
 import { ROUTE_WAIT_TO_NCFORCE } from "../route";
 import { fillHp } from "../engine/moods";
+import { getActiveBackupTarget } from "../engine/resources";
+import { Station } from "libram/dist/resources/2022/TrainSet";
 
 const meatBuffer = 1000;
 
@@ -240,15 +238,15 @@ export const MiscQuest: Quest = {
       ready: () =>
         have($familiar`Reagnimated Gnome`) &&
         !have($item`gnomish housemaid's kgnee`) &&
-        !get("_loopcasual_checkedGnome", false),
+        !get(toTempPref("checkedGnome"), false),
       completed: () =>
         !have($familiar`Reagnimated Gnome`) ||
         have($item`gnomish housemaid's kgnee`) ||
-        get("_loopcasual_checkedGnome", false),
+        get(toTempPref("checkedGnome"), false),
       do: () => {
         visitUrl("arena.php");
         runChoice(4);
-        set("_loopcasual_checkedGnome", true);
+        set(toTempPref("checkedGnome"), true);
       },
       outfit: { familiar: $familiar`Reagnimated Gnome` },
       freeaction: true,
@@ -370,7 +368,11 @@ export const MiscQuest: Quest = {
           case $location`The Skeleton Store`:
             return true; // Can freely start quest
           case $location`The Smut Orc Logging Camp`:
-            return step("questL09Topping") >= 0;
+            return (
+              step("questL09Topping") >= 0 &&
+              // Wait until Blech House is cleared
+              get("smutOrcNoncombatProgress") < 15
+            );
           case $location`The Spooky Forest`:
             return step("questL02Larva") >= 0;
         }
@@ -393,6 +395,8 @@ export const MiscQuest: Quest = {
               visitUrl("choice.php?pwd=&whichchoice=798&option=2");
               visitUrl("woods.php");
             }
+            if (have($item`funky junk key`))
+              putCloset($item`funky junk key`, itemAmount($item`funky junk key`));
             return;
           case $location`The Overgrown Lot`:
             if (step("questM24Doc") === -1) {
@@ -418,10 +422,7 @@ export const MiscQuest: Quest = {
         }
       },
       do: () => {
-        adv1(get("ghostLocation") ?? $location`none`, 0, "");
-        if (wanderingNCs.has(get("lastEncounter"))) {
-          adv1(get("ghostLocation") ?? $location`none`, 0, "");
-        }
+        return get("ghostLocation") ?? $location`none`;
       },
       outfit: (): OutfitSpec | Outfit => {
         if (get("ghostLocation") === $location`Inside the Palindome`)
@@ -494,12 +495,42 @@ export const MiscQuest: Quest = {
             .skill($skill`Shoot Ghost`)
             .skill($skill`Trap Ghost`);
       }),
-      post: () => {
-        if (get("questPAGhost") !== "unstarted") {
-          throw `Failed to kill ghost from protonic accelerator pack`;
+      choices: () => {
+        const result = {
+          1060: 5,
+          1061: 6,
+          1062: 7,
+          899: 2,
+          896: 1,
+          893: 2,
+          901: 2,
+          334: 1,
+          507: 1,
+        };
+
+        // Make progress in the Spooky Forest if needed
+        if (!have($item`Spooky Temple map`) && step("questM16Temple") < 999) {
+          if (!have($item`tree-holed coin`)) {
+            return { ...result, 502: 2, 505: 2 };
+          }
+          return { ...result, 502: 3, 506: 3 };
         }
+        if (!have($item`Spooky-Gro fertilizer`) && step("questM16Temple") < 999) {
+          return { ...result, 502: 3, 506: 2 };
+        }
+        if (step("questL02Larva") < 1) {
+          return { ...result, 502: 2, 505: 1 };
+        }
+        // Otherwise, skip it (through the tree-holed coin path)
+        return { ...result, 502: 2, 505: 2 };
       },
-      limit: { tries: 20, unready: true },
+      limit: {
+        tries: 40,
+        guard: Guards.create(
+          () => myAdventures(),
+          (adv) => myAdventures() >= adv // Assert we did not use an adventure
+        ),
+      },
     },
     {
       name: "Acquire Birch Battery",
@@ -552,14 +583,15 @@ export const MiscQuest: Quest = {
     },
     {
       name: "Acquire Red Rocket",
-      after: ["Sewer Accordion", "Sewer Totem", "Sewer Saucepan"],
+      after: ["Sewer Accordion", "Sewer Totem", "Sewer Saucepan", "Acquire Mouthwash", "Mouthwash"],
       priority: () => Priorities.Free,
       ready: () => myMeat() >= meatBuffer + 250,
       completed: () =>
         have($item`red rocket`) ||
         !have($item`Clan VIP Lounge key`) ||
         have($effect`Ready to Eat`) ||
-        myFullness() > 0,
+        myFullness() > 0 ||
+        myLevel() >= 12,
       do: () => {
         visitUrl("clan_viplounge.php");
         visitUrl("clan_viplounge.php?action=fwshop&whichfloor=2");
@@ -574,10 +606,10 @@ export const MiscQuest: Quest = {
       priority: () => Priorities.Free,
       completed: () =>
         familiarWeight($familiar`Grey Goose`) >= 9 ||
-        get("_loopsmol_chef_goose") === "true" ||
+        get(toTempPref("chefGoose")) === "true" ||
         !have($familiar`Shorter-Order Cook`),
       do: () => {
-        set("_loopsmol_chef_goose", "true");
+        set(toTempPref("chefGoose"), "true");
       },
       outfit: { familiar: $familiar`Grey Goose` },
       limit: { tries: 1 },
@@ -587,10 +619,10 @@ export const MiscQuest: Quest = {
       name: "Hermit Clover",
       after: ["Hidden City/Open Temple", "Acquire Red Rocket"],
       ready: () => myMeat() >= meatBuffer + 1000,
-      completed: () => get("_loopsmol_clovers") === "true",
+      completed: () => get(toTempPref("clovers")) === "true",
       do: () => {
         hermit($item`11-leaf clover`, 3);
-        set("_loopsmol_clovers", "true");
+        set(toTempPref("clovers"), "true");
       },
       outfit: { equip: $items`designer sweatpants` },
       freeaction: true,
@@ -836,10 +868,9 @@ export const MiscQuest: Quest = {
       name: "Trainset",
       after: [],
       priority: () => Priorities.Free,
-      ready: () =>
-        getWorkshed() === $item`model train set` && getTrainsetPositionsUntilConfigurable() === 0,
+      ready: () => getWorkshed() === $item`model train set` && TrainSet.canConfigure(),
       completed: () => {
-        const config = getTrainsetConfiguration();
+        const config = TrainSet.cycle();
         const desiredConfig = getDesiredTrainsetConfig();
         for (let i = 0; i < 8; i++) {
           if (config[i] !== desiredConfig[i]) return false;
@@ -847,7 +878,7 @@ export const MiscQuest: Quest = {
         return true;
       },
       do: () => {
-        setTrainsetConfiguration(getDesiredTrainsetConfig());
+        TrainSet.setConfiguration(getDesiredTrainsetConfig());
       },
       limit: { tries: 20, unready: true },
       freeaction: true,
@@ -1052,9 +1083,10 @@ export const MiscQuest: Quest = {
       name: "Cloud Talk",
       after: [],
       priority: () => Priorities.Free,
-      ready: () => get("getawayCampsiteUnlocked"),
       completed: () =>
-        have($effect`That's Just Cloud-Talk, Man`) || get("_campAwayCloudBuffs", 0) > 0,
+        have($effect`That's Just Cloud-Talk, Man`) ||
+        get("_campAwayCloudBuffs", 0) > 0 ||
+        !get("getawayCampsiteUnlocked"),
       do: () => visitUrl("place.php?whichplace=campaway&action=campaway_sky"),
       freeaction: true,
       limit: { tries: 1 },
@@ -1222,7 +1254,9 @@ export const MiscQuest: Quest = {
         have($item`Greatest American Pants`) &&
         have($skill`Flavour of Magic`) &&
         have($skill`Cannelloni Cannon`) &&
-        have($skill`Saucegeyser`),
+        have($skill`Saucegeyser`) &&
+        // Wait until bowling ball is thrown
+        !have($item`cosmic bowling ball`),
       priority: () => Priorities.Start,
       prepare: (): void => {
         if (get("snojoSetting") === null) {
@@ -1233,9 +1267,10 @@ export const MiscQuest: Quest = {
           ensureEffect($effect`Super Skill`); // after GAP are equipped
         }
         cliExecute("uneffect ode to booze");
+        cliExecute("uneffect scarysauce");
         fillHp();
       },
-      completed: () => get("_snojoFreeFights") >= 10 || myLevel() >= 13,
+      completed: () => get("_snojoFreeFights") >= 10,
       do: $location`The X-32-F Combat Training Snowman`,
       post: (): void => {
         if (get("_snojoFreeFights") === 10) cliExecute("hottub"); // Clean -stat effects
@@ -1414,13 +1449,101 @@ export const MiscQuest: Quest = {
       freeaction: true,
       limit: { tries: 3 },
     },
+    {
+      name: "Acquire Mouthwash",
+      priority: () => Priorities.Start,
+      completed: () =>
+        !have($item`Sept-Ember Censer`) ||
+        (get("availableSeptEmbers", 0) < 1 && get("_septEmbersCollected", false)) ||
+        args.minor.saveember,
+      do: (): void => {
+        // Grab Embers
+        visitUrl("shop.php?whichshop=september");
+        set("_septEmbersCollected", true);
+
+        // Grab Bembershoot
+        if (!have($item`bembershoot`))
+          visitUrl(`shop.php?whichshop=september&action=buyitem&quantity=1&whichrow=1516&pwd`);
+
+        // Grab Mouthwashes
+        const mouthwashes = floor(get("availableSeptEmbers", 0) / 2);
+        visitUrl(
+          `shop.php?whichshop=september&action=buyitem&quantity=${mouthwashes}&whichrow=1512&pwd`
+        );
+      },
+      limit: { tries: 1 },
+      freeaction: true,
+    },
+    {
+      name: "Cut Melodramedary",
+      after: [],
+      priority: () => Priorities.Start,
+      completed: () =>
+        get("_entauntaunedToday") ||
+        !have($familiar`Melodramedary`) ||
+        !have($item`Fourth of May Cosplay Saber`) ||
+        !have($familiar`Shorter-Order Cook`),
+      do: () => {
+        visitUrl("main.php?action=camel");
+        runChoice(1);
+      },
+      outfit: {
+        familiar: $familiar`Melodramedary`,
+        weapon: $item`Fourth of May Cosplay Saber`,
+      },
+      freeaction: true,
+      limit: { tries: 1 },
+    },
+    {
+      name: "Mouthwash",
+      after: ["Cloud Talk", "Cut Melodramedary", "Acquire Mouthwash", "Sewer Saucepan"],
+      priority: () => Priorities.Start,
+      completed: () => !have($item`Mmm-brr! brand mouthwash`) || atLevel(12),
+      do: () => {
+        // Use potions for cold resistance
+        if (have($item`rainbow glitter candle`)) use($item`rainbow glitter candle`);
+        if (have($item`pec oil`)) use($item`pec oil`);
+        if (have($skill`Emotionally Chipped`) && get("_feelPeacefulUsed") < 3)
+          ensureEffect($effect`Feeling Peaceful`);
+        if (have($item`MayDay™ supply package`)) use($item`MayDay™ supply package`);
+        if (have($item`scroll of Protection from Bad Stuff`))
+          use($item`scroll of Protection from Bad Stuff`);
+        if (have($item`bottle of antifreeze`)) use($item`bottle of antifreeze`);
+        if (have($item`recording of Rolando's Rondo of Resisto`))
+          use($item`recording of Rolando's Rondo of Resisto`);
+        if (have($item`saucepan`) && have($skill`Scarysauce`)) ensureEffect($effect`Scarysauce`);
+
+        use($item`Mmm-brr! brand mouthwash`);
+      },
+      outfit: () => {
+        if (have($familiar`Trick-or-Treating Tot`) && have($item`li'l candy corn costume`))
+          return {
+            familiar: $familiar`Trick-or-Treating Tot`,
+            modifier: "cold res",
+          };
+        return {
+          familiar: $familiar`Exotic Parrot`,
+          modifier: "cold res",
+        };
+      },
+      limit: { tries: 4 },
+      freeaction: true,
+    },
+    {
+      // The ultimate location to put needed backups
+      name: `Backup Monster`,
+      completed: () => false,
+      ready: () => {
+        if (!have($item`backup camera`)) return false;
+        const target = getActiveBackupTarget();
+        return target !== undefined && target.monster !== $monster`Eldritch Tentacle`;
+      },
+      do: $location`Noob Cave`,
+      delay: 11,
+      limit: { tries: 11 },
+    },
   ],
 };
-
-const scriptName = Args.getMetadata(args).scriptName;
-export function toTempPref(name: string) {
-  return `_${scriptName}_${name}`;
-}
 
 export const WandQuest: Quest = {
   name: "Wand",
@@ -1599,37 +1722,37 @@ export function trainSetAvailable() {
   return false;
 }
 
-function getDesiredTrainsetConfig(): TrainsetPiece[] {
+function getDesiredTrainsetConfig(): TrainSet.Cycle {
   const statPiece = byStat({
-    Muscle: TrainsetPiece.MUS_STATS,
-    Mysticality: TrainsetPiece.MYS_STATS,
-    Moxie: TrainsetPiece.MOXIE_STATS,
+    Muscle: Station.BRAWN_SILO,
+    Mysticality: Station.BRAIN_SILO,
+    Moxie: Station.GROIN_SILO,
   });
 
-  const config: TrainsetPiece[] = [];
-  config.push(TrainsetPiece.DOUBLE_NEXT_STATION);
+  const config: Station[] = [];
+  config.push(Station.COAL_HOPPER);
   if (!have($item`designer sweatpants`)) {
-    config.push(TrainsetPiece.EFFECT_MP);
-  } else if (myLevel() < 5) {
+    config.push(Station.TOWER_FIZZY);
+  } else if (myLevel() < 5 && (!have($item`Sept-Ember Censer`) || args.minor.saveember)) {
     config.push(statPiece);
   }
 
-  config.push(TrainsetPiece.SMUT_BRIDGE_OR_STATS);
-  config.push(TrainsetPiece.GAIN_MEAT);
+  config.push(Station.LOGGING_MILL);
+  config.push(Station.GAIN_MEAT);
 
   if (myLevel() < 12 && !config.includes(statPiece)) {
     config.push(statPiece);
   }
 
-  if (!config.includes(TrainsetPiece.EFFECT_MP)) {
-    config.push(TrainsetPiece.EFFECT_MP);
+  if (!config.includes(Station.TOWER_FIZZY)) {
+    config.push(Station.TOWER_FIZZY);
   }
-  if (!haveOre()) config.push(TrainsetPiece.ORE);
+  if (!haveOre()) config.push(Station.ORE_HOPPER);
 
-  config.push(TrainsetPiece.HOT_RES_COLD_DMG);
-  config.push(TrainsetPiece.STENCH_RES_SPOOKY_DMG);
-  config.push(TrainsetPiece.DROP_LAST_FOOD_OR_RANDOM);
-  config.push(TrainsetPiece.RANDOM_BOOZE);
-  config.push(TrainsetPiece.CANDY);
-  return config.slice(0, 8);
+  config.push(Station.TOWER_FROZEN);
+  config.push(Station.SPOOKY_GRAVEYARD);
+  config.push(Station.TRACKSIDE_DINER);
+  config.push(Station.GRAIN_SILO);
+  config.push(Station.CANDY_FACTORY);
+  return config.slice(0, 8) as TrainSet.Cycle;
 }

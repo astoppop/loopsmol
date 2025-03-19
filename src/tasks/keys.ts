@@ -42,7 +42,7 @@ import { CombatStrategy } from "../engine/combat";
 import { Quest, Task } from "../engine/task";
 import { step } from "grimoire-kolmafia";
 import { Priorities } from "../engine/priority";
-import { args } from "../args";
+import { args, toTempPref } from "../args";
 import { trainSetAvailable } from "./misc";
 import { atLevel, haveFlorest, underStandard } from "../lib";
 import { castWithMpSwaps, ensureWithMPSwaps } from "../engine/moods";
@@ -181,7 +181,7 @@ function dailyDungeonTask(): Omit<Task, "completed" | "name" | "after"> {
         have($item`eleven-foot pole`)),
     prepare: () => {
       if (have($item`daily dungeon malware`))
-        set("_loopsmol_malware_amount", itemAmount($item`daily dungeon malware`));
+        set(toTempPref("malware_amount"), itemAmount($item`daily dungeon malware`));
       if (have($item`Pick-O-Matic lockpicks`)) return;
       if (have($item`Platinum Yendorian Express Card`)) return;
       if (have($item`skeleton bone`) && have($item`loose teeth`) && !have($item`skeleton key`))
@@ -189,7 +189,7 @@ function dailyDungeonTask(): Omit<Task, "completed" | "name" | "after"> {
     },
     do: $location`The Daily Dungeon`,
     post: () => {
-      if (itemAmount($item`daily dungeon malware`) < get("_loopsmol_malware_amount", 0))
+      if (itemAmount($item`daily dungeon malware`) < get(toTempPref("malware_amount"), 0))
         set("_dailyDungeonMalwareUsed", true);
       uneffect($effect`Apathy`);
       cliExecute("refresh inv");
@@ -374,7 +374,11 @@ export const DigitalQuest: Quest = {
       completed: () => getScore() >= 10000,
       ready: () => get("8BitColor", "black") === "red",
       do: $location`The Fungus Plains`,
-      outfit: { modifier: "meat", equip: $items`continuum transfunctioner` },
+      outfit: {
+        modifier: "meat",
+        equip: $items`continuum transfunctioner`,
+        avoid: $items`Roman Candelabra`,
+      },
       combat: new CombatStrategy().kill(),
       limit: { soft: 16 },
     },
@@ -413,11 +417,13 @@ export const DigitalQuest: Quest = {
             modifier: "init",
             equip: $items`continuum transfunctioner, backup camera`,
             modes: { backupcamera: "init" },
+            avoid: $items`Roman Candelabra`,
           };
         return {
           modifier: "init",
           equip: $items`continuum transfunctioner, backup camera, rocket boots`,
           modes: { backupcamera: "init" },
+          avoid: $items`Roman Candelabra`,
         };
       },
       combat: new CombatStrategy().kill(),
@@ -441,8 +447,14 @@ export const DigitalQuest: Quest = {
           return {
             modifier: "DA",
             equip: $items`continuum transfunctioner, Greatest American Pants`,
+            avoid: $items`Roman Candelabra`,
           };
-        else return { modifier: "DA", equip: $items`continuum transfunctioner` };
+        else
+          return {
+            modifier: "DA",
+            equip: $items`continuum transfunctioner`,
+            avoid: $items`Roman Candelabra`,
+          };
       },
       combat: new CombatStrategy().kill(),
       limit: { soft: 16 },
@@ -465,6 +477,7 @@ export const DigitalQuest: Quest = {
             modifier: "item",
             familiar: $familiar`Trick-or-Treating Tot`,
             equip: $items`continuum transfunctioner, li'l ninja costume`,
+            avoid: $items`Roman Candelabra`,
           };
         else return { modifier: "item", equip: $items`continuum transfunctioner` };
       },

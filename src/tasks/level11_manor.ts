@@ -43,10 +43,11 @@ const Manor1: Task[] = [
       if (have($item`rainbow glitter candle`)) use($item`rainbow glitter candle`);
     },
     do: $location`The Haunted Kitchen`,
-    outfit: { modifier: "stench res, hot res" },
+    outfit: { modifier: "stench res, hot res", avoid: $items`Roman Candelabra` },
     choices: { 893: 2 },
     combat: new CombatStrategy().kill(),
     limit: { soft: 21 },
+    delay: 7,
   },
   {
     name: "Billiards",
@@ -86,6 +87,7 @@ const Manor1: Task[] = [
     do: $location`The Haunted Library`,
     combat: new CombatStrategy().banish($monsters`banshee librarian, bookbat`).kill(),
     outfit: { equip: $items`deft pirate hook` },
+    orbtargets: () => undefined, // do not dodge anything with orb
     choices: { 163: 4, 888: 5, 889: 5, 894: 1 },
     limit: { soft: 20 },
   },
@@ -159,14 +161,8 @@ const Manor2: Task[] = [
     completed: () => have($item`Lady Spookyraven's powder puff`) || step("questM21Dance") >= 2,
     do: $location`The Haunted Bathroom`,
     choices: { 881: 1, 105: 1, 892: 1 },
-    outfit: () => {
-      if (!have($effect`Citizen of a Zone`) && have($familiar`Patriotic Eagle`)) {
-        return { modifier: "-combat", familiar: $familiar`Patriotic Eagle` };
-      }
-      return { modifier: "-combat" };
-    },
+    outfit: { modifier: "-combat" },
     combat: new CombatStrategy()
-      .startingMacro(Macro.trySkill($skill`%fn, let's pledge allegiance to a Zone`))
       .killHard($monster`cosmetics wraith`)
       .macro(() => {
         if (have($item`genie bottle`)) return new Macro();
@@ -202,8 +198,16 @@ const Manor2: Task[] = [
         $monsters`animated mahogany nightstand, animated rustic nightstand, Wardröb nightstand`
       )
       .ignore($monster`tumbleweed`),
-    delay: () => (have($item`Lord Spookyraven's spectacles`) ? 5 : 0),
-    parachute: $monster`animated ornate nightstand`,
+    delay: () => {
+      if (!have($item`Lord Spookyraven's spectacles`)) return 0;
+      if (
+        !have($item`disposable instant camera`) &&
+        !have($item`photograph of a dog`) &&
+        step("questL11Palindome") < 3
+      )
+        return 0;
+      return 5;
+    },
     limit: { soft: 20 },
   },
   {
@@ -228,6 +232,7 @@ const Manor2: Task[] = [
         $monsters`animated mahogany nightstand, animated rustic nightstand, Wardröb nightstand, elegant animated nightstand`
       )
       .ignore($monster`tumbleweed`),
+    parachute: $monster`animated ornate nightstand`,
     limit: { soft: 10 },
   },
   {

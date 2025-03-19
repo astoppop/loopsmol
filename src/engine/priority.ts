@@ -2,6 +2,7 @@
  * Temporary priorities that override the routing.
  */
 
+import { Outfit } from "grimoire-kolmafia";
 import { getCounter, Location, Monster, myLocation } from "kolmafia";
 import {
   $effect,
@@ -13,21 +14,25 @@ import {
   have,
   undelay,
 } from "libram";
+import { args } from "../args";
 import { CombatStrategy } from "./combat";
 import { moodCompatible } from "./moods";
-import { getModifiersFrom } from "./outfit";
-import { forceItemSources, forceNCPossible, yellowRaySources } from "./resources";
+import { canEquipResource, getModifiersFrom } from "./outfit";
+import {
+  forceItemSources, forceNCPossible, getActiveBackupTarget,
+  wandererSources, yellowRaySources
+} from "./resources";
 import { globalStateCache } from "./state";
-import { Priority, Task } from "./task";
+import { hasDelay, NCForce, Priority, Task } from "./task";
 
 export class Priorities {
-  static Wanderer: Priority = { score: 20000, reason: "Wanderer" };
-  static Always: Priority = { score: 10000, reason: "Forced" };
-  static GoodForceNC: Priority = { score: 8000, reason: "Forcing NC" };
-  static Free: Priority = { score: 1000, reason: "Free action" };
+  static Always: Priority = { score: 20000, reason: "Forced" };
+  static Free: Priority = { score: 10000, reason: "Free action" };
+  static LastCopyableMonster: Priority = { score: 4000, reason: "Copy last monster" };
+  static GoodFeelNostalgia: Priority = { score: 3999, reason: "Feel Nostalgia is ready" };
+  static Wanderer: Priority = { score: 2000, reason: "Wanderer" };
+  static GoodForceNC: Priority = { score: 1000, reason: "Forcing NC" };
   static Start: Priority = { score: 900, reason: "Initial tasks" };
-  static NeedAdv: Priority = { score: 200, reason: "Low on adventures" };
-  static LastCopyableMonster: Priority = { score: 100, reason: "Copy last monster" };
   static Effect: Priority = { score: 20, reason: "Useful effect" };
   static GoodOrb: Priority = { score: 15, reason: "Target orb monster" };
   static BestCosmicBowlingBall: Priority = {
@@ -73,6 +78,8 @@ export class Prioritization {
   static from(task: Task): Prioritization {
     const result = new Prioritization();
     const base = task.priority?.() ?? Priorities.None;
+    const outfitSpec = undelay(task.outfit);
+
     if (Array.isArray(base)) {
       for (const priority of base) result.priorities.add(priority);
     } else {
@@ -101,7 +108,7 @@ export class Prioritization {
 
     // Ensure that the current +/- combat effects are compatible
     //  (Macguffin/Forest is tough and doesn't need much +combat; just power though)
-    const modifier = getModifiersFrom(undelay(task.outfit));
+    const modifier = getModifiersFrom(outfitSpec);
     if (!moodCompatible(modifier) && task.name !== "Macguffin/Forest") {
       result.priorities.add(Priorities.BadMood);
     }
@@ -131,7 +138,8 @@ export class Prioritization {
     }
 
     // Handle potential NC forcers in a zone
-    if (undelay(task.ncforce)) {
+    const ncforce = undelay(task.ncforce);
+    if (ncforce === NCForce.Yes || ncforce === NCForce.Eventually) {
       if (get("noncombatForcerActive")) {
         result.priorities.add(Priorities.GoodForceNC);
       } else if (forceNCPossible()) {
@@ -216,6 +224,34 @@ export class Prioritization {
       if (task.do instanceof Location && task.do === myLocation())
         result.priorities.add(Priorities.GoodLocation);
     }
+
+    // Consider (more expensive to compute) ways to burn delay
+    if (hasDelay(task)) {
+      // Consider backing up a monster into the task
+      if (have($item`backup camera`) && !args.minor.skipbackups) {
+        const backup = getActiveBackupTarget();
+        if (backup) {
+          const outfit = new Outfit();
+          if (outfitSpec !== undefined) outfit.equip(outfitSpec);
+          if (outfit.canEquip($item`backup camera`)) {
+            result.priorities.add(Priorities.LastCopyableMonster);
+          }
+        }
+      }
+
+      // Consider using a wandering monster
+      const wanderer = wandererSources.find(
+        (source) => source.available() && source.chance() === 1
+      );
+      if (wanderer) {
+        const outfit = new Outfit();
+        if (outfitSpec !== undefined) outfit.equip(outfitSpec);
+        if (canEquipResource(outfit, wanderer)) {
+          result.priorities.add(Priorities.Wanderer);
+        }
+      }
+    }
+
     return result;
   }
 

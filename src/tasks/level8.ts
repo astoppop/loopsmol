@@ -1,4 +1,15 @@
-import { equippedAmount, Item, itemAmount, numericModifier, use, visitUrl } from "kolmafia";
+import {
+  equippedAmount,
+  familiarWeight,
+  Item,
+  itemAmount,
+  myFamiliar,
+  myLevel,
+  myLocation,
+  numericModifier,
+  use,
+  visitUrl,
+} from "kolmafia";
 import {
   $effect,
   $familiar,
@@ -68,16 +79,34 @@ export const McLargeHugeQuest: Quest = {
     {
       name: "Goatlet",
       after: ["Trapper Request"],
+      priority: () => {
+        if (
+          myLevel() >= 12 &&
+          have($item`crepe paper parachute cape`) &&
+          !have($effect`Everything looks Beige`) &&
+          ((have($item`June cleaver`) && get("_juneCleaverFightsLeft") === 0) ||
+            myLocation() === $location`The Goatlet`)
+        ) {
+          // Trigger this parachute as one of the first things to do
+          return Priorities.Start;
+        }
+        return Priorities.None;
+      },
       ready: () =>
         Counter.get("Spooky VHS Tape Monster") === 0 ||
         get("spookyVHSTapeMonster") !== $monster`dairy goat`,
       completed: () => itemAmount($item`goat cheese`) >= 3 || step("questL08Trapper") >= 2,
       do: $location`The Goatlet`,
-      outfit: {
-        modifier: "item",
-        avoid: $items`broken champagne bottle`,
-        familiar: $familiar`Grey Goose`,
-        equip: $items`deft pirate hook`,
+      outfit: () => {
+        const equip = $items`deft pirate hook`;
+        if (myLevel() >= 12 && !have($effect`Everything Looks Red`))
+          equip.push($item`Everfull Dart Holster`);
+        return {
+          modifier: "item",
+          avoid: $items`broken champagne bottle`,
+          familiar: $familiar`Grey Goose`,
+          equip: equip,
+        };
       },
       combat: new CombatStrategy()
         .macro(() => {
@@ -85,10 +114,19 @@ export const McLargeHugeQuest: Quest = {
             return Macro.trySkill($skill`Emit Matter Duplicating Drones`).tryItem(
               $item`Spooky VHS Tape`
             );
+          if (itemAmount($item`goat cheese`) === 1) {
+            if (
+              myFamiliar() === $familiar`Grey Goose` &&
+              familiarWeight($familiar`Grey Goose`) >= 6
+            )
+              return Macro.trySkill($skill`Emit Matter Duplicating Drones`);
+            else return Macro.tryItem($item`Spooky VHS Tape`).trySkill($skill`Swoop like a Bat`);
+          }
           return new Macro();
         }, $monster`dairy goat`)
         .killItem($monster`dairy goat`)
         .banish($monsters`drunk goat, sabre-toothed goat`),
+      parachute: $monster`dairy goat`,
       limit: { soft: 15 },
     },
     {
@@ -97,7 +135,6 @@ export const McLargeHugeQuest: Quest = {
       ready: () => get("trapperOre") !== "" && itemAmount(Item.get(get("trapperOre"))) >= 3, // Checked here since there is no task for Trainset ores
       completed: () => step("questL08Trapper") >= 2,
       do: () => visitUrl("place.php?whichplace=mclargehuge&action=trappercabin"),
-      parachute: $monster`dairy goat`,
       limit: { tries: 1 },
       freeaction: true,
     },

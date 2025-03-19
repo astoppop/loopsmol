@@ -26,6 +26,7 @@ import {
   myMaxmp,
   myMeat,
   myMp,
+  mySign,
   mySpleenUse,
   myTurncount,
   numericModifier,
@@ -51,6 +52,7 @@ import {
   $skill,
   AprilingBandHelmet,
   AsdonMartin,
+  AutumnAton,
   CinchoDeMayo,
   Counter,
   get,
@@ -553,8 +555,9 @@ function planRunawayFamiliar(): RunawayFamiliarSpec {
     let attainableWeight = familiarWeight(chosenFamiliar);
 
     // Include passive skills
-    if (have($skill`Crimbo Training: Concierge`)) attainableWeight += 5;
-    if (have($skill`Amphibian Sympathy`)) attainableWeight += 1;
+    if (have($skill`Crimbo Training: Concierge`)) attainableWeight += 1;
+    if (have($skill`Amphibian Sympathy`)) attainableWeight += 5;
+    if (mySign() === "Platypus") attainableWeight += 5;
 
     // Include active effects
     for (const effect of getActiveEffects())
@@ -842,7 +845,7 @@ export type BackupTarget = {
   outfit?: OutfitSpec | (() => OutfitSpec);
   limit_tries: number;
 };
-export const backupTargets: BackupTarget[] = [
+const backupTargets: BackupTarget[] = [
   {
     monster: $monster`Camel's Toe`,
     completed: () =>
@@ -860,8 +863,25 @@ export const backupTargets: BackupTarget[] = [
     limit_tries: 2,
   },
   {
+    monster: $monster`lobsterfrogman`,
+    completed: () =>
+      itemAmount($item`barrel of gunpowder`) >= 5 ||
+      get("sidequestLighthouseCompleted") !== "none" ||
+      !have($item`backup camera`) ||
+      AutumnAton.have() ||
+      (have($item`Fourth of May Cosplay Saber`) &&
+        (get("_saberForceUses") < 5 || get("_saberForceMonsterCount") > 0)),
+    limit_tries: 4,
+  },
+  {
     monster: $monster`Eldritch Tentacle`,
     completed: () => args.minor.skipbackups,
     limit_tries: 11,
   },
 ];
+
+export function getActiveBackupTarget() {
+  return backupTargets.find(
+    (target) => !target.completed() && target.monster === get("lastCopyableMonster")
+  );
+}
