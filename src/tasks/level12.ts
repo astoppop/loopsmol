@@ -169,7 +169,7 @@ const Lighthouse: Task[] = [
   {
     name: "Lighthouse",
     after: ["Enrage"],
-    ready: () => step("questL04Bat") >= 3 || have($item`Fourth of May Cosplay Saber`) || get("_saberForceMonster") !== $monster`lobsterfrogman` || get("_saberForceMonsterCount") === 0,
+    ready: () => get("_saberForceMonster") == $monster`lobsterfrogman` && get("_saberForceMonsterCount") > 0,
     completed: () =>
       itemAmount($item`barrel of gunpowder`) >= 5 || get("sidequestLighthouseCompleted") !== "none",
     priority: (): Priority => {
@@ -177,7 +177,7 @@ const Lighthouse: Task[] = [
         if ($location`Sonofa Beach`.turnsSpent === 0) return Priorities.GoodAutumnaton;
         else if (myTurncount() < 400) return Priorities.BadAutumnaton;
       }
-      return Priorities.None;
+      return Priorities.LastCopyableMonster;
     },
     do: $location`Sonofa Beach`,
     outfit: (): OutfitSpec => {
