@@ -78,7 +78,7 @@ export function killMacro(hard?: boolean): Macro {
     result.trySkill($skill`Darts: Throw at %part1`);
   }
 
-  return new Macro()
+  return result
     .trySkill($skill`Curse of Weaksauce`)
     .while_("!mpbelow 6", new Macro().skill($skill`Saucestorm`))
     .attack()

@@ -103,7 +103,7 @@ const Lighthouse: Task[] = [
   {
     name: "Lighthouse Saber",
     after: ["Enrage"],
-    ready: () => step("questL04Bat") >= 3 || have($item`Fourth of May Cosplay Saber`) || get("_saberForceMonster") !== $monster`lobsterfrogman` || get("_saberForceMonsterCount") === 0,
+    ready: () => step("questL04Bat") >= 3 || (have($item`Fourth of May Cosplay Saber`) && get("_saberForceMonsterCount") === 0),
     completed: () =>
       itemAmount($item`barrel of gunpowder`) >= 5 ||
       get("sidequestLighthouseCompleted") !== "none" ||
@@ -142,9 +142,7 @@ const Lighthouse: Task[] = [
           equippedAmount($item`Fourth of May Cosplay Saber`) > 0 &&
           !AutumnAton.have() &&
           get("_saberForceUses") < 5 &&
-          (get("_saberForceMonster") !== $monster`lobsterfrogman` ||
-            get("_saberForceMonsterCount") === 0 ||
-            (get("_saberForceMonsterCount") === 1 && itemAmount($item`barrel of gunpowder`) < 4))
+          (get("_saberForceMonsterCount") === 0 && itemAmount($item`barrel of gunpowder`) === 0)
         ) {
           return new Macro().skill($skill`Use the Force`);
         }
@@ -169,7 +167,7 @@ const Lighthouse: Task[] = [
   {
     name: "Lighthouse",
     after: ["Enrage"],
-    ready: () => get("_saberForceMonster") == $monster`lobsterfrogman` && get("_saberForceMonsterCount") > 0,
+    ready: () => get("_saberForceMonsterCount") > 0,
     completed: () =>
       itemAmount($item`barrel of gunpowder`) >= 5 || get("sidequestLighthouseCompleted") !== "none",
     priority: (): Priority => {
@@ -193,7 +191,7 @@ const Lighthouse: Task[] = [
       }
 
       // Reuse the force to track more lobsterfrogman
-      if (get("_saberForceMonsterCount") === 1 && itemAmount($item`barrel of gunpowder`) < 4) {
+      if (itemAmount($item`barrel of gunpowder`) === 2 && get("_saberForceUses") === 1) {
         return { equip: $items`Fourth of May Cosplay Saber` };
       }
 
@@ -204,10 +202,9 @@ const Lighthouse: Task[] = [
         if (
           equippedAmount($item`Fourth of May Cosplay Saber`) > 0 &&
           !AutumnAton.have() &&
-          get("_saberForceUses") < 5 &&
+          get("_saberForceUses") === 1 &&
           (get("_saberForceMonster") !== $monster`lobsterfrogman` ||
-            get("_saberForceMonsterCount") === 0 ||
-            (get("_saberForceMonsterCount") === 1 && itemAmount($item`barrel of gunpowder`) < 4))
+            itemAmount($item`barrel of gunpowder`) === 2)
         ) {
           return new Macro().skill($skill`Use the Force`);
         }
